@@ -1,0 +1,200 @@
+:root {
+    --primary-bg: #1a2a1a;
+    /* Verde militar escuro */
+    --secondary-bg: #344e41;
+    --text-color: #dad7cd;
+    /* Texto cor de areia */
+    --accent-color: #a3b18a;
+    --danger-color: #c94c4c;
+    --font-family: 'Staatliches', cursive;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--primary-bg);
+    color: var(--text-color);
+    font-family: sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#game-container {
+    position: relative;
+    border: 3px solid var(--accent-color);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+}
+
+canvas {
+    display: block;
+    background-color: #000;
+    /* O fundo do canvas será desenhado pelo JS */
+}
+
+#hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 10px;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-start;
+    font-family: var(--font-family);
+    font-size: 1.2rem;
+    color: var(--accent-color);
+    letter-spacing: 1px;
+}
+
+.screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background-color: var(--secondary-bg);
+    padding: 40px;
+    border: 3px solid var(--accent-color);
+    width: 800px;
+    max-width: 90vw;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+}
+
+.screen.active {
+    display: flex;
+}
+
+.screen h1,
+.screen h2 {
+    font-family: var(--font-family);
+    font-size: 3rem;
+    letter-spacing: 3px;
+    margin-bottom: 20px;
+    color: var(--accent-color);
+    text-transform: uppercase;
+}
+
+.screen p {
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+#final-stats {
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 15px;
+    margin-bottom: 20px;
+    border-left: 5px solid var(--accent-color);
+    text-align: left;
+}
+
+input[type="text"] {
+    padding: 10px;
+    font-size: 1rem;
+    border: 2px solid var(--accent-color);
+    background-color: var(--primary-bg);
+    color: var(--text-color);
+    margin-bottom: 20px;
+    text-align: center;
+    font-family: var(--font-family);
+    letter-spacing: 1px;
+}
+
+button {
+    padding: 12px 25px;
+    font-size: 1.2rem;
+    border: none;
+    background-color: var(--accent-color);
+    color: var(--primary-bg);
+    cursor: pointer;
+    font-family: var(--font-family);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    transition: background-color 0.3s, transform 0.1s;
+}
+
+button:hover {
+    background-color: #bfd0a2;
+}
+
+button:active {
+    transform: translateY(2px);
+}
+
+.button-group {
+    margin-top: 20px;
+    display: flex;
+    gap: 15px;
+}
+
+/* Tabela de Ranking */
+#ranking-table-container {
+    width: 100%;
+    max-height: 400px;
+    overflow-y: auto;
+    border: 2px solid var(--accent-color);
+}
+
+#ranking-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#ranking-table th,
+#ranking-table td {
+    padding: 10px;
+    border-bottom: 1px solid var(--accent-color);
+    text-align: left;
+}
+
+#ranking-table th {
+    background-color: var(--primary-bg);
+    position: sticky;
+    top: 0;
+}
+
+#ranking-table tbody tr:nth-child(even) {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+.hud-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    min-width: 150px;
+}
+
+#hud-player-stats {
+    border-left: 2px solid rgba(163, 177, 138, 0.5);
+    border-right: 2px solid rgba(163, 177, 138, 0.5);
+    padding: 0 20px;
+}
+
+#hud-player-stats div {
+    font-size: 1.3rem;
+}
+
+#hud-powerups {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+#hud-powerups img {
+    width: 24px;
+    height: 24px;
+}
+
+#hud-powerups span {
+    color: #ffd700;
+    font-weight: bold;
+    margin-right: 15px;
+}
