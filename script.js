@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const rankingScreen = document.getElementById('ranking-screen');
     const playerNameInput = document.getElementById('player-name-input');
     const startGameBtn = document.getElementById('start-game-btn');
-    const restartBtn = document.getElementById('restart-btn'); // LINHA CORRIGIDA
+    const restartBtn = document.getElementById('restart-btn');
     const newPlayerBtn = document.getElementById('new-player-btn');
     const viewRankingBtn = document.getElementById('view-ranking-btn');
     const exportRankingBtn = document.getElementById('export-ranking-btn');
@@ -108,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
         enemyBullets = [],
         powerUps = [],
         particles = [],
+        floatingTexts = [],
         backgroundY = 0,
         screenFlash = { alpha: 0, duration: 20, timer: 0 };
     const keys = {
@@ -134,7 +135,11 @@ document.addEventListener('DOMContentLoaded', () => {
             this.shootCooldown = 300;
             this.lastShotTime = 0;
             this.powerUpLevels = { feather: 0, cannon: 0 };
-
+            this.hitboxWidth = 30;
+            this.hitboxHeight = 30;
+            this.isInvincible = false;
+            this.invincibilityDuration = 1000;
+            this.invincibilityEndTime = 0;
             this.image = assets.player;
             this.shotDamage = this.baseDamage;
             this.bulletWidth = 6;
@@ -144,12 +149,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updatePowerStats() {
             const level = this.powerUpLevels.cannon;
-
             this.numShots = 1;
             this.bulletWidth = 6;
             this.bulletSpeed = 7;
             this.image = assets.player;
-
             let calculatedDamage = this.baseDamage;
 
             if (level >= 1) {
@@ -175,14 +178,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 const bonusLevels = level - 4;
                 calculatedDamage *= Math.pow(1.50, bonusLevels);
             }
-
             this.shotDamage = calculatedDamage;
         }
 
         draw() {
+            if (this.isInvincible) {
+                if (Math.floor(Date.now() / 100) % 2 === 0) {
+                    return;
+                }
+            }
             ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
         }
+
+        handleDamageSmoke() {
+            if (this.health <= this.maxHealth / 3) {
+                // Gera partículas de fumaça e fogo de forma contínua
+                if (Math.random() < 0.5) {
+                    const smokeColor = `rgba(100, 100, 100, ${Math.random() * 0.5 + 0.2})`;
+                    particles.push(new Particle(this.x + this.width / 2, this.y + this.height / 2, smokeColor, true));
+
+                    if (Math.random() < 0.3) {
+                        const fireColor = `rgba(${255}, ${Math.random() * 150}, 0, ${Math.random() * 0.5 + 0.5})`;
+                        particles.push(new Particle(this.x + this.width / 2, this.y + this.height / 2, fireColor, true));
+                    }
+                }
+            }
+        }
+
         update() {
+            if (this.isInvincible && Date.now() > this.invincibilityEndTime) {
+                this.isInvincible = false;
+            }
+            this.handleDamageSmoke(); // Chama a função de fumaça a cada quadro
             if (keys.ArrowUp && this.y > 0) this.y -= this.speed;
             if (keys.ArrowDown && this.y < canvas.height - this.height) this.y += this.speed;
             if (keys.ArrowLeft && this.x > 0) this.x -= this.speed;
@@ -212,8 +239,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         takeDamage(damage) {
+            if (this.isInvincible) return;
             this.health -= damage;
+            floatingTexts.push(new FloatingText(this.x + this.width / 2, this.y, Math.round(damage), '#FF4500'));
             screenFlash.timer = screenFlash.duration;
+            this.isInvincible = true;
+            this.invincibilityEndTime = Date.now() + this.invincibilityDuration;
             if (this.health <= 0) {
                 this.health = 0;
                 gameOver();
@@ -222,13 +253,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     class Bullet {
-        constructor(x, y, width, height, color1, color2, speed, damage, direction = 1, glowColor = null) {
+        constructor(x, y, width, height, bodyColor, tipColor, speed, damage, direction = 1, glowColor = null) {
             this.x = x;
             this.y = y;
             this.width = width;
             this.height = height;
-            this.color1 = color1;
-            this.color2 = color2;
+            this.bodyColor = bodyColor;
+            this.tipColor = tipColor;
             this.speed = speed;
             this.damage = damage;
             this.direction = direction;
@@ -240,12 +271,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.shadowColor = this.glowColor;
             }
 
-            const halfWidth = this.width / 2;
-            ctx.fillStyle = this.color1;
-            ctx.fillRect(this.x, this.y, halfWidth, this.height);
-            ctx.fillStyle = this.color2;
-            ctx.fillRect(this.x + halfWidth, this.y, halfWidth, this.height);
+            const tipHeight = this.height * 0.3; // A ponta terá 30% da altura do projétil
+            const bodyHeight = this.height * 0.7;
 
+            if (this.direction === -1) { // Tiro para cima (Jogador)
+                // Corpo
+                ctx.fillStyle = this.bodyColor;
+                ctx.fillRect(this.x, this.y + tipHeight, this.width, bodyHeight);
+                // Ponta
+                ctx.fillStyle = this.tipColor;
+                ctx.fillRect(this.x, this.y, this.width, tipHeight);
+            } else { // Tiro para baixo (Inimigo)
+                // Corpo
+                ctx.fillStyle = this.bodyColor;
+                ctx.fillRect(this.x, this.y, this.width, bodyHeight);
+                // Ponta
+                ctx.fillStyle = this.tipColor;
+                ctx.fillRect(this.x, this.y + bodyHeight, this.width, tipHeight);
+            }
+            
             if (this.glowColor) {
                 ctx.shadowBlur = 0;
             }
@@ -279,8 +323,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const healthPercentage = this.health / this.maxHealth;
             this.maxHealth = newMaxHealth;
             this.health = this.maxHealth * (isNaN(healthPercentage) ? 1 : healthPercentage);
-            this.speed = this.baseSpeed * Math.pow(1.10, levelMultiplier);
-            this.damage = this.baseDamage * Math.pow(1.10, levelMultiplier);
+            this.speed = this.baseSpeed * Math.pow(1.07, levelMultiplier);
+            this.damage = this.baseDamage * Math.pow(1.07, levelMultiplier);
         }
         draw() {
             ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
@@ -329,26 +373,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isAligned = (player.x < this.x + this.width) && (player.x + player.width > this.x);
                 if (isAligned) {
                     this.nextShotTime = now + this.minShootInterval + Math.random() * 2000;
+                    let bodyColor = 'white', tipColor, glowColor, bulletSpeed;
 
-                    let color1, color2, glowColor;
+                    if (this.type === 'ah' || this.type === 'ih') {
+                        bulletSpeed = 3.5;
+                    } else {
+                        bulletSpeed = 6;
+                    }
                     if (this.type === 'ap' || this.type === 'ah') {
-                        color1 = '#FF6347';
-                        color2 = '#4169E1';
+                        tipColor = '#FF0000'; // Vermelho
                         glowColor = '#FF0000';
                     } else {
-                        color1 = '#D3D3D3';
-                        color2 = '#87CEEB';
+                        tipColor = '#00FFFF'; // Azul Fluorescente (Ciano)
                         glowColor = '#00FFFF';
                     }
-
                     const bulletX = this.x + this.width / 2 - 2;
                     const bulletY = this.y + this.height;
-                    enemyBullets.push(new Bullet(bulletX, bulletY, 4, 12, color1, color2, 5, this.damage, 1, glowColor));
+                    enemyBullets.push(new Bullet(bulletX, bulletY, 4, 12, bodyColor, tipColor, bulletSpeed, this.damage, 1, glowColor));
                 }
             }
         }
         takeDamage(damage) {
             this.health -= damage;
+            floatingTexts.push(new FloatingText(this.x + this.width / 2, this.y, Math.round(damage), '#FFFF00'));
             return this.health <= 0;
         }
     }
@@ -406,25 +453,67 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     class Particle {
-        constructor(x, y, color) {
+        constructor(x, y, color, isSmoke = false) {
             this.x = x;
             this.y = y;
-            this.size = Math.random() * 5 + 2;
-            this.speedX = Math.random() * 6 - 3;
-            this.speedY = Math.random() * 6 - 3;
+            this.isSmoke = isSmoke;
+            if (isSmoke) {
+                this.size = Math.random() * 4 + 3;
+                this.speedX = Math.random() * 2 - 1;
+                this.speedY = Math.random() * 0.5 + 0.2; // Fumaça sobe devagar
+                this.lifespan = 40;
+            } else {
+                this.size = Math.random() * 5 + 2;
+                this.speedX = Math.random() * 8 - 4;
+                this.speedY = Math.random() * 8 - 4;
+                this.lifespan = 50;
+            }
             this.color = color;
-            this.life = 50;
+            this.initialLifespan = this.lifespan;
+            this.opacity = 1;
         }
         update() {
             this.x += this.speedX;
             this.y += this.speedY;
-            this.life--;
+            this.lifespan--;
+            this.opacity = this.lifespan / this.initialLifespan;
         }
         draw() {
+            ctx.save();
+            ctx.globalAlpha = this.opacity;
             ctx.fillStyle = this.color;
             ctx.beginPath();
             ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
             ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    class FloatingText {
+        constructor(x, y, text, color) {
+            this.x = x;
+            this.y = y;
+            this.text = text;
+            this.color = color;
+            this.lifespan = 60;
+            this.initialLifespan = 60;
+            this.opacity = 1;
+        }
+
+        update() {
+            this.y -= 0.5;
+            this.lifespan--;
+            this.opacity = this.lifespan / this.initialLifespan;
+        }
+
+        draw() {
+            ctx.save();
+            ctx.globalAlpha = this.opacity;
+            ctx.fillStyle = this.color;
+            ctx.font = '20px Staatliches';
+            ctx.textAlign = 'center';
+            ctx.fillText(this.text, this.x, this.y);
+            ctx.restore();
         }
     }
 
@@ -438,6 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
         enemyBullets = [];
         powerUps = [];
         particles = [];
+        floatingTexts = [];
         backgroundY = 0;
         gameState = {
             ...gameState,
@@ -546,6 +636,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function checkCollisions() {
+        const playerHitbox = {
+            x: player.x + (player.width - player.hitboxWidth) / 2,
+            y: player.y + (player.height - player.hitboxHeight) / 2,
+            width: player.hitboxWidth,
+            height: player.hitboxHeight
+        };
         for (let i = playerBullets.length - 1; i >= 0; i--) {
             for (let j = enemies.length - 1; j >= 0; j--) {
                 if (playerBullets[i] && enemies[j] && isColliding(playerBullets[i], enemies[j])) {
@@ -566,7 +662,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         for (let i = enemyBullets.length - 1; i >= 0; i--) {
-            if (isColliding(enemyBullets[i], player)) {
+            if (isColliding(enemyBullets[i], playerHitbox)) {
                 player.takeDamage(enemyBullets[i].damage);
                 enemyBullets.splice(i, 1);
             }
@@ -578,7 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         for (let i = enemies.length - 1; i >= 0; i--) {
-            if (isColliding(enemies[i], player)) {
+            if (isColliding(enemies[i], playerHitbox)) {
                 player.takeDamage(enemies[i].damage * 2);
                 createExplosion(enemies[i].x + enemies[i].width / 2, enemies[i].y + enemies[i].height / 2);
                 enemies.splice(i, 1);
@@ -604,7 +700,15 @@ document.addEventListener('DOMContentLoaded', () => {
         powerUps = powerUps.filter(p => p.y < canvas.height + p.height);
         for (let i = particles.length - 1; i >= 0; i--) {
             particles[i].update();
-            if (particles[i].life <= 0) particles.splice(i, 1);
+            if (particles[i].lifespan <= 0) {
+                particles.splice(i, 1);
+            }
+        }
+        for (let i = floatingTexts.length - 1; i >= 0; i--) {
+            floatingTexts[i].update();
+            if (floatingTexts[i].lifespan <= 0) {
+                floatingTexts.splice(i, 1);
+            }
         }
         if (screenFlash.timer > 0) {
             screenFlash.timer--;
@@ -617,6 +721,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const newLevel = 1 + Math.floor(gameState.score / SCALING_SCORE_THRESHOLD);
         if (newLevel > gameState.level) {
             gameState.level = newLevel;
+            player.maxHealth = PLAYER_STARTING_HEALTH * (1 + (gameState.level - 1) * 0.10);
+            player.health = Math.min(player.maxHealth, player.health + PLAYER_STARTING_HEALTH * 0.10);
             enemies.forEach(e => e.updateStatsForLevel());
         }
         gameState.elapsedTime = Date.now() - gameState.startTime;
@@ -635,6 +741,7 @@ document.addEventListener('DOMContentLoaded', () => {
         enemyBullets.forEach(b => b.draw());
         powerUps.forEach(p => p.draw());
         particles.forEach(p => p.draw());
+        floatingTexts.forEach(text => text.draw());
         if (screenFlash.alpha > 0) {
             ctx.fillStyle = `rgba(255, 0, 0, ${screenFlash.alpha})`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -652,7 +759,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateHUD() {
         hudScore.textContent = gameState.score;
-        hudHealth.textContent = `${Math.ceil(player.health)}%`;
+        hudHealth.textContent = `${Math.ceil(player.health)} / ${Math.round(player.maxHealth)}`;
         hudLevel.textContent = gameState.level;
         hudTime.textContent = formatTime(gameState.elapsedTime);
         hudFeatherLevel.textContent = `x${player.powerUpLevels.feather}`;
