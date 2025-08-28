@@ -24,40 +24,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const hudCannonLevel = document.getElementById('hud-cannon-level');
     const hudDamage = document.getElementById('hud-damage');
     const hudSpeed = document.getElementById('hud-speed');
+    const finalBossesDefeated = document.getElementById('final-bosses-defeated');
 
     canvas.width = 800;
     canvas.height = 600;
 
     // --- CARREGADOR DE ASSETS ---
     const assets = {
-        player: new Image(),
-        player2: new Image(),
-        player3: new Image(),
-        player4: new Image(),
-        aviaoEUA: new Image(),
-        aviaoISRAEL: new Image(),
-        helicopteroEUA: new Image(),
-        helicopteroISRAEL: new Image(),
+        player: new Image(), player2: new Image(), player3: new Image(), player4: new Image(),
+        aviaoEUA: new Image(), aviaoISRAEL: new Image(), helicopteroEUA: new Image(), helicopteroISRAEL: new Image(),
         cenario: new Image(),
-        pwVelocidade: new Image(),
-        pwCanhao: new Image(),
-        pwBomba: new Image(),
-        pwSaude: new Image()
+        pwVelocidade: new Image(), pwCanhao: new Image(), pwBomba: new Image(), pwSaude: new Image(),
+        chefao: new Image()
     };
     const assetSources = {
-        player: 'assets/jogador.png',
-        player2: 'assets/jogador2.png',
-        player3: 'assets/jogador3.png',
-        player4: 'assets/jogador4.png',
-        aviaoEUA: 'assets/aviaoEUA.png',
-        aviaoISRAEL: 'assets/aviaoISRAEL.png',
-        helicopteroEUA: 'assets/helicopteroEUA.png',
-        helicopteroISRAEL: 'assets/helicopteroISRAEL.png',
+        player: 'assets/jogador.png', player2: 'assets/jogador2.png', player3: 'assets/jogador3.png', player4: 'assets/jogador4.png',
+        aviaoEUA: 'assets/aviaoEUA.png', aviaoISRAEL: 'assets/aviaoISRAEL.png', helicopteroEUA: 'assets/helicopteroEUA.png', helicopteroISRAEL: 'assets/helicopteroISRAEL.png',
         cenario: 'assets/cenariojogo.png',
-        pwVelocidade: 'assets/PWvelocidade.png',
-        pwCanhao: 'assets/PWcanhao.png',
-        pwBomba: 'assets/PWbomba.png',
-        pwSaude: 'assets/PWsaude.png'
+        pwVelocidade: 'assets/PWvelocidade.png', pwCanhao: 'assets/PWcanhao.png', pwBomba: 'assets/PWbomba.png', pwSaude: 'assets/PWsaude.png',
+        chefao: 'assets/chefao.png'
     };
     let assetsLoaded = 0;
     const totalAssets = Object.keys(assetSources).length;
@@ -76,9 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const key in assetSources) {
             assets[key].src = assetSources[key];
             assets[key].onload = onAssetLoad;
-            assets[key].onerror = () => {
-                alert(`Não foi possível carregar a imagem: ${assetSources[key]}`);
-            }
+            assets[key].onerror = () => alert(`Não foi possível carregar a imagem: ${assetSources[key]}`);
         }
     }
 
@@ -88,36 +71,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const PLAYER_STARTING_HEALTH = 100;
     const ENEMY_LIMIT = 7;
     const SCALING_SCORE_THRESHOLD = 100;
+    const KILLS_TO_SPAWN_BOSS = 40;
 
     // --- ESTADO DO JOGO ---
     let gameState = {
-        totalKills: 0,
-        nextPowerUpKillCount: 0,
-        playerName: '',
-        score: 0,
-        level: 1,
-        startTime: null,
-        elapsedTime: 0,
-        isGameOver: false,
-        animationFrameId: null,
+        killsSinceBoss: 0, bossActive: false, bossesDefeated: 0, phase: 1,
+        totalKills: 0, nextPowerUpKillCount: 0, playerName: '', score: 0, level: 1, startTime: null,
+        elapsedTime: 0, isGameOver: false, animationFrameId: null,
         killCounts: { ap: 0, ip: 0, ah: 0, ih: 0 },
         powerupsCollected: { feather: 0, cannon: 0, bomb: 0, health: 0 }
     };
-    let player, enemies = [],
-        playerBullets = [],
-        enemyBullets = [],
-        powerUps = [],
-        particles = [],
-        floatingTexts = [],
-        backgroundY = 0,
-        screenFlash = { alpha: 0, duration: 20, timer: 0 };
-    const keys = {
-        ArrowUp: false,
-        ArrowDown: false,
-        ArrowLeft: false,
-        ArrowRight: false,
-        ' ': false
-    };
+    let player, boss = null, enemies = [],
+        playerBullets = [], enemyBullets = [], bossBullets = [],
+        powerUps = [], particles = [], floatingTexts = [],
+        backgroundY = 0, screenFlash = { alpha: 0, duration: 20, timer: 0 },
+        whiteoutFlash = { timer: 0, duration: 4000 },
+        phaseMessage = { text: '', timer: 0, duration: 3000 };
+    const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, ' ': false };
 
     // --- CLASSES DO JOGO ---
 
@@ -192,7 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         handleDamageSmoke() {
             if (this.health <= this.maxHealth / 3) {
-                // Gera partículas de fumaça e fogo de forma contínua
                 if (Math.random() < 0.5) {
                     const smokeColor = `rgba(100, 100, 100, ${Math.random() * 0.5 + 0.2})`;
                     particles.push(new Particle(this.x + this.width / 2, this.y + this.height / 2, smokeColor, true));
@@ -209,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (this.isInvincible && Date.now() > this.invincibilityEndTime) {
                 this.isInvincible = false;
             }
-            this.handleDamageSmoke(); // Chama a função de fumaça a cada quadro
+            this.handleDamageSmoke();
             if (keys.ArrowUp && this.y > 0) this.y -= this.speed;
             if (keys.ArrowDown && this.y < canvas.height - this.height) this.y += this.speed;
             if (keys.ArrowLeft && this.x > 0) this.x -= this.speed;
@@ -253,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     class Bullet {
-        constructor(x, y, width, height, bodyColor, tipColor, speed, damage, direction = 1, glowColor = null) {
+        constructor(x, y, width, height, bodyColor, tipColor, speed, damage, direction = 1, glowColor = null, isHoming = false) {
             this.x = x;
             this.y = y;
             this.width = width;
@@ -264,37 +233,41 @@ document.addEventListener('DOMContentLoaded', () => {
             this.damage = damage;
             this.direction = direction;
             this.glowColor = glowColor;
+            this.isHoming = isHoming;
         }
         draw() {
             if (this.glowColor) {
                 ctx.shadowBlur = 15;
                 ctx.shadowColor = this.glowColor;
             }
-
-            const tipHeight = this.height * 0.3; // A ponta terá 30% da altura do projétil
+            const tipHeight = this.height * 0.3;
             const bodyHeight = this.height * 0.7;
 
-            if (this.direction === -1) { // Tiro para cima (Jogador)
-                // Corpo
-                ctx.fillStyle = this.bodyColor;
+            ctx.fillStyle = this.bodyColor;
+            if (this.direction === -1) {
                 ctx.fillRect(this.x, this.y + tipHeight, this.width, bodyHeight);
-                // Ponta
-                ctx.fillStyle = this.tipColor;
-                ctx.fillRect(this.x, this.y, this.width, tipHeight);
-            } else { // Tiro para baixo (Inimigo)
-                // Corpo
-                ctx.fillStyle = this.bodyColor;
+            } else {
                 ctx.fillRect(this.x, this.y, this.width, bodyHeight);
-                // Ponta
-                ctx.fillStyle = this.tipColor;
+            }
+
+            ctx.fillStyle = this.tipColor;
+            if (this.direction === -1) {
+                ctx.fillRect(this.x, this.y, this.width, tipHeight);
+            } else {
                 ctx.fillRect(this.x, this.y + bodyHeight, this.width, tipHeight);
             }
-            
+
             if (this.glowColor) {
                 ctx.shadowBlur = 0;
             }
         }
         update() {
+            if (this.isHoming && player) {
+                const targetX = player.x + player.width / 2 - this.width / 2;
+                const dx = targetX - this.x;
+                const homingStrength = 0.05;
+                this.x += dx * homingStrength;
+            }
             this.y += this.speed * this.direction;
         }
     }
@@ -374,17 +347,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isAligned) {
                     this.nextShotTime = now + this.minShootInterval + Math.random() * 2000;
                     let bodyColor = 'white', tipColor, glowColor, bulletSpeed;
-
                     if (this.type === 'ah' || this.type === 'ih') {
                         bulletSpeed = 3.5;
                     } else {
                         bulletSpeed = 6;
                     }
                     if (this.type === 'ap' || this.type === 'ah') {
-                        tipColor = '#FF0000'; // Vermelho
+                        tipColor = '#FF0000';
                         glowColor = '#FF0000';
                     } else {
-                        tipColor = '#00FFFF'; // Azul Fluorescente (Ciano)
+                        tipColor = '#00FFFF';
                         glowColor = '#00FFFF';
                     }
                     const bulletX = this.x + this.width / 2 - 2;
@@ -425,22 +397,10 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.shadowBlur = shadowBlur;
             let imageToDraw;
             switch (this.type) {
-                case 'feather':
-                    imageToDraw = assets.pwVelocidade;
-                    ctx.shadowColor = '#00BFFF';
-                    break;
-                case 'cannon':
-                    imageToDraw = assets.pwCanhao;
-                    ctx.shadowColor = '#FFA500';
-                    break;
-                case 'bomb':
-                    imageToDraw = assets.pwBomba;
-                    ctx.shadowColor = '#FF4500';
-                    break;
-                case 'health':
-                    imageToDraw = assets.pwSaude;
-                    ctx.shadowColor = '#32CD32';
-                    break;
+                case 'feather': imageToDraw = assets.pwVelocidade; ctx.shadowColor = '#00BFFF'; break;
+                case 'cannon': imageToDraw = assets.pwCanhao; ctx.shadowColor = '#FFA500'; break;
+                case 'bomb': imageToDraw = assets.pwBomba; ctx.shadowColor = '#FF4500'; break;
+                case 'health': imageToDraw = assets.pwSaude; ctx.shadowColor = '#32CD32'; break;
             }
             if (imageToDraw && imageToDraw.complete) {
                 ctx.drawImage(imageToDraw, this.x, this.y, this.width, this.height);
@@ -456,11 +416,10 @@ document.addEventListener('DOMContentLoaded', () => {
         constructor(x, y, color, isSmoke = false) {
             this.x = x;
             this.y = y;
-            this.isSmoke = isSmoke;
             if (isSmoke) {
                 this.size = Math.random() * 4 + 3;
                 this.speedX = Math.random() * 2 - 1;
-                this.speedY = Math.random() * 0.5 + 0.2; // Fumaça sobe devagar
+                this.speedY = Math.random() * 0.5 + 0.2;
                 this.lifespan = 40;
             } else {
                 this.size = Math.random() * 5 + 2;
@@ -499,13 +458,11 @@ document.addEventListener('DOMContentLoaded', () => {
             this.initialLifespan = 60;
             this.opacity = 1;
         }
-
         update() {
             this.y -= 0.5;
             this.lifespan--;
             this.opacity = this.lifespan / this.initialLifespan;
         }
-
         draw() {
             ctx.save();
             ctx.globalAlpha = this.opacity;
@@ -516,28 +473,111 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.restore();
         }
     }
+    
+    class Boss {
+        constructor() {
+            this.width = 180;
+            this.height = 180;
+            this.x = canvas.width / 2 - this.width / 2;
+            this.y = 50;
+            this.image = assets.chefao;
+            this.creationTime = Date.now();
 
+            const levelMultiplier = Math.floor(gameState.score / SCALING_SCORE_THRESHOLD);
+            const baseHeliHealth = 100 * Math.pow(1.20, levelMultiplier);
+            this.maxHealth = baseHeliHealth * 3;
+            this.health = this.maxHealth;
+
+            this.speed = (20 / 60) * 2.5;
+            this.scoreValue = 300;
+
+            const basePlaneDamage = 25 * Math.pow(1.07, levelMultiplier);
+            this.bulletDamage = basePlaneDamage * 2;
+
+            this.shootCooldown = 1500;
+            this.lastShotTime = Date.now();
+        }
+
+        draw() {
+            const pulse = Math.sin((Date.now() - this.creationTime) / 400) * 10 + 20;
+            ctx.shadowBlur = pulse;
+            ctx.shadowColor = 'red';
+            ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+            ctx.shadowBlur = 0;
+            this.drawHealthBar();
+        }
+
+        drawHealthBar() {
+            const barWidth = this.width * 0.8;
+            const barHeight = 15;
+            const x = this.x + (this.width - barWidth) / 2;
+            const y = this.y - barHeight - 5;
+            const currentHealthWidth = (this.health / this.maxHealth) * barWidth;
+
+            ctx.fillStyle = '#333';
+            ctx.fillRect(x, y, barWidth, barHeight);
+            ctx.fillStyle = 'red';
+            ctx.fillRect(x, y, currentHealthWidth, barHeight);
+        }
+
+        update() {
+            const targetX = player.x + player.width / 2 - this.width / 2;
+            const dx = targetX - this.x;
+            if (Math.abs(dx) > this.speed) {
+                this.x += Math.sign(dx) * this.speed;
+            }
+
+            if (this.x < 0) this.x = 0;
+            if (this.x > canvas.width - this.width) this.x = canvas.width - this.width;
+
+            this.attemptToShoot();
+        }
+
+        attemptToShoot() {
+            if (Date.now() - this.lastShotTime > this.shootCooldown) {
+                this.lastShotTime = Date.now();
+
+                const rainbowGradient = ctx.createLinearGradient(0, 0, 0, 12);
+                rainbowGradient.addColorStop(0, "red");
+                rainbowGradient.addColorStop(0.2, "orange");
+                rainbowGradient.addColorStop(0.4, "yellow");
+                rainbowGradient.addColorStop(0.6, "green");
+                rainbowGradient.addColorStop(0.8, "blue");
+                rainbowGradient.addColorStop(1, "purple");
+
+                const outerSpeed = 12;
+                const outerWidth = 8;
+                bossBullets.push(new Bullet(this.x + 10, this.y + 100, outerWidth, 12, 'white', rainbowGradient, outerSpeed, this.bulletDamage, 1, 'white', false));
+                bossBullets.push(new Bullet(this.x + this.width - 10 - outerWidth, this.y + 100, outerWidth, 12, 'white', rainbowGradient, outerSpeed, this.bulletDamage, 1, 'white', false));
+
+                const innerSpeed = 3.5;
+                const innerWidth = 12;
+                bossBullets.push(new Bullet(this.x + 50, this.y + 120, innerWidth, 12, 'white', rainbowGradient, innerSpeed, this.bulletDamage, 1, 'white', true));
+                bossBullets.push(new Bullet(this.x + this.width - 50 - innerWidth, this.y + 120, innerWidth, 12, 'white', rainbowGradient, innerSpeed, this.bulletDamage, 1, 'white', true));
+            }
+        }
+
+        takeDamage(damage) {
+            this.health -= damage;
+            floatingTexts.push(new FloatingText(this.x + Math.random() * this.width, this.y + Math.random() * this.height, Math.round(damage), '#FFFF00'));
+            return this.health <= 0;
+        }
+    }
+    
     // --- FUNÇÕES DE LÓGICA DO JOGO ---
 
     function resetGame() {
         player = new Player();
         player.updatePowerStats();
-        enemies = [];
-        playerBullets = [];
-        enemyBullets = [];
-        powerUps = [];
-        particles = [];
-        floatingTexts = [];
+        enemies = []; boss = null;
+        playerBullets = []; enemyBullets = []; bossBullets = [];
+        powerUps = []; particles = []; floatingTexts = [];
         backgroundY = 0;
         gameState = {
             ...gameState,
-            totalKills: 0,
-            nextPowerUpKillCount: Math.floor(Math.random() * 3) + 5,
-            score: 0,
-            level: 1,
-            startTime: Date.now(),
-            elapsedTime: 0,
-            isGameOver: false,
+            killsSinceBoss: 0, bossActive: false, bossesDefeated: 0, phase: 1,
+            totalKills: 0, nextPowerUpKillCount: Math.floor(Math.random() * 3) + 5,
+            score: 0, level: 1, startTime: Date.now(), elapsedTime: 0, isGameOver: false,
             killCounts: { ap: 0, ip: 0, ah: 0, ih: 0 },
             powerupsCollected: { feather: 0, cannon: 0, bomb: 0, health: 0 }
         };
@@ -556,11 +596,35 @@ document.addEventListener('DOMContentLoaded', () => {
         resetGame();
         gameLoop();
     }
+    
+    function spawnBoss() {
+        gameState.bossActive = true;
+        enemies = [];
+        boss = new Boss();
+    }
+    
+    function handleBossDefeat() {
+        gameState.score += boss.scoreValue;
+        gameState.bossesDefeated++;
+        gameState.phase++;
+        
+        for(let i = 0; i < 10; i++) {
+            createExplosion(boss.x + Math.random() * boss.width, boss.y + Math.random() * boss.height);
+        }
+        whiteoutFlash.timer = whiteoutFlash.duration;
+        phaseMessage.text = `Fase ${gameState.phase}`;
+        phaseMessage.timer = phaseMessage.duration;
+
+        boss = null;
+        gameState.bossActive = false;
+        gameState.killsSinceBoss = 0;
+    }
 
     function gameOver() {
         gameState.isGameOver = true;
         cancelAnimationFrame(gameState.animationFrameId);
         saveScore();
+        finalBossesDefeated.textContent = gameState.bossesDefeated;
         document.getElementById('final-player-name').textContent = gameState.playerName;
         document.getElementById('final-score').textContent = gameState.score;
         document.getElementById('final-time').textContent = formatTime(gameState.elapsedTime);
@@ -582,7 +646,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function spawnEnemy() {
-        if (enemies.length >= ENEMY_LIMIT) return;
+        if (gameState.bossActive || enemies.length >= ENEMY_LIMIT) return;
         const rand = Math.random();
         let newEnemy;
         if (rand < 0.3) {
@@ -626,6 +690,10 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'bomb':
                 enemies.forEach(enemy => createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2));
                 enemies = [];
+                if(boss) {
+                    boss.health -= boss.maxHealth * 0.1;
+                    if(boss.health <= 0) handleBossDefeat();
+                }
                 gameState.powerupsCollected.bomb++;
                 break;
             case 'health':
@@ -649,10 +717,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         gameState.score += enemies[j].scoreValue;
                         gameState.killCounts[enemies[j].type]++;
                         gameState.totalKills++;
+                        gameState.killsSinceBoss++;
                         createExplosion(enemies[j].x + enemies[j].width / 2, enemies[j].y + enemies[j].height / 2);
                         if (gameState.totalKills >= gameState.nextPowerUpKillCount) {
                             spawnRandomPowerUp();
                             gameState.nextPowerUpKillCount = gameState.totalKills + Math.floor(Math.random() * 3) + 5;
+                        }
+                        if (!gameState.bossActive && gameState.killsSinceBoss >= KILLS_TO_SPAWN_BOSS) {
+                            spawnBoss();
                         }
                         enemies.splice(j, 1);
                     }
@@ -661,10 +733,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
+        if (gameState.bossActive && boss) {
+            for (let i = playerBullets.length - 1; i >= 0; i--) {
+                if (isColliding(playerBullets[i], boss)) {
+                    if (boss.takeDamage(playerBullets[i].damage)) {
+                        handleBossDefeat();
+                    }
+                    playerBullets.splice(i, 1);
+                }
+            }
+        }
         for (let i = enemyBullets.length - 1; i >= 0; i--) {
             if (isColliding(enemyBullets[i], playerHitbox)) {
                 player.takeDamage(enemyBullets[i].damage);
                 enemyBullets.splice(i, 1);
+            }
+        }
+        for (let i = bossBullets.length - 1; i >= 0; i--) {
+            if (isColliding(bossBullets[i], playerHitbox)) {
+                player.takeDamage(bossBullets[i].damage);
+                bossBullets.splice(i, 1);
             }
         }
         for (let i = powerUps.length - 1; i >= 0; i--) {
@@ -690,14 +778,19 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateGame() {
         if (gameState.isGameOver) return;
         player.update();
+        if(gameState.bossActive && boss) boss.update();
+
         playerBullets.forEach(b => b.update());
         playerBullets = playerBullets.filter(b => b.y > -b.height);
         enemies.forEach(e => e.update());
         enemies = enemies.filter(e => e.y < canvas.height + 50);
         enemyBullets.forEach(b => b.update());
         enemyBullets = enemyBullets.filter(b => b.y < canvas.height);
+        bossBullets.forEach(b => b.update());
+        bossBullets = bossBullets.filter(b => b.y < canvas.height);
         powerUps.forEach(p => p.update());
         powerUps = powerUps.filter(p => p.y < canvas.height + p.height);
+        
         for (let i = particles.length - 1; i >= 0; i--) {
             particles[i].update();
             if (particles[i].lifespan <= 0) {
@@ -710,13 +803,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 floatingTexts.splice(i, 1);
             }
         }
+        
+        if (whiteoutFlash.timer > 0) whiteoutFlash.timer -= 1000 / 60;
+        if (phaseMessage.timer > 0) phaseMessage.timer -= 1000 / 60;
+
         if (screenFlash.timer > 0) {
             screenFlash.timer--;
             screenFlash.alpha = (screenFlash.timer / screenFlash.duration) * 0.7;
         } else {
             screenFlash.alpha = 0;
         }
-        if (Math.random() < 0.025) spawnEnemy();
+        spawnEnemy();
         checkCollisions();
         const newLevel = 1 + Math.floor(gameState.score / SCALING_SCORE_THRESHOLD);
         if (newLevel > gameState.level) {
@@ -736,12 +833,31 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.drawImage(assets.cenario, 0, backgroundY, canvas.width, canvas.height);
         ctx.drawImage(assets.cenario, 0, backgroundY - canvas.height, canvas.width, canvas.height);
         player.draw();
+        
+        if (gameState.bossActive && boss) boss.draw();
+
         playerBullets.forEach(b => b.draw());
         enemies.forEach(e => e.draw());
         enemyBullets.forEach(b => b.draw());
+        bossBullets.forEach(b => b.draw());
         powerUps.forEach(p => p.draw());
         particles.forEach(p => p.draw());
         floatingTexts.forEach(text => text.draw());
+        
+        if (whiteoutFlash.timer > 0) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${whiteoutFlash.timer / whiteoutFlash.duration})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        if (phaseMessage.timer > 0) {
+            ctx.save();
+            ctx.globalAlpha = phaseMessage.timer / phaseMessage.duration;
+            ctx.fillStyle = `white`;
+            ctx.font = '80px Staatliches';
+            ctx.textAlign = 'center';
+            ctx.fillText(phaseMessage.text, canvas.width / 2, canvas.height / 2);
+            ctx.restore();
+        }
+        
         if (screenFlash.alpha > 0) {
             ctx.fillStyle = `rgba(255, 0, 0, ${screenFlash.alpha})`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -780,6 +896,7 @@ document.addEventListener('DOMContentLoaded', () => {
             name: gameState.playerName,
             score: gameState.score,
             level: gameState.level,
+            bosses: gameState.bossesDefeated,
             time: formatTime(gameState.elapsedTime),
             kills: gameState.killCounts,
             powerups: Object.values(gameState.powerupsCollected).reduce((a, b) => a + b, 0)
@@ -798,13 +915,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const tableBody = document.getElementById('ranking-table').querySelector('tbody');
         tableBody.innerHTML = '';
         if (rankings.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="7">Nenhum recorde ainda.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="8">Nenhum recorde ainda.</td></tr>`;
             return;
         }
         rankings.forEach((entry, index) => {
             const row = document.createElement('tr');
             const killString = `A:${entry.kills.ap+entry.kills.ah} I:${entry.kills.ip+entry.kills.ih}`;
-            row.innerHTML = `<td>${index + 1}</td><td>${entry.name}</td><td>${entry.score}</td><td>${entry.level}</td><td>${entry.time}</td><td>${killString}</td><td>${entry.powerups}</td>`;
+            row.innerHTML = `<td>${index + 1}</td><td>${entry.name}</td><td>${entry.score}</td><td>${entry.level}</td><td>${entry.bosses}</td><td>${entry.time}</td><td>${killString}</td><td>${entry.powerups}</td>`;
             tableBody.appendChild(row);
         });
     }
