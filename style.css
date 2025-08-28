@@ -205,3 +205,26 @@ button:active {
     padding: 8px; /* Reduz um pouco o padding para caber tudo */
     white-space: nowrap; /* Impede que o texto quebre a linha */
 }
+
+/* Estilo para o botão de perigo (Zerar Ranking) */
+button.danger {
+    background-color: var(--danger-color);
+    color: var(--text-color);
+}
+button.danger:hover {
+    background-color: #e06c6c;
+}
+
+/* Novas cores da HUD baseadas na fase */
+#hud {
+    /* A cor principal agora é controlada por uma variável de fase */
+    color: var(--hud-color);
+    transition: color 0.5s ease-in-out; /* Transição suave de cor */
+}
+
+/* Cores para cada fase */
+#hud.phase-1 { --hud-color: #a3b18a; } /* Verde (Padrão) */
+#hud.phase-2 { --hud-color: #87CEEB; } /* Azul Céu */
+#hud.phase-3 { --hud-color: #FFD700; } /* Dourado */
+#hud.phase-4 { --hud-color: #F5F5F5; } /* Branco Fumaça */
+#hud.phase-5 { --hud-color: #E53935; } /* Vermelho Intenso */
