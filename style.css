@@ -198,3 +198,10 @@ button:active {
     font-weight: bold;
     margin-right: 15px;
 }
+
+/* Ajuste para a nova coluna na tabela de ranking */
+#ranking-table th,
+#ranking-table td {
+    padding: 8px; /* Reduz um pouco o padding para caber tudo */
+    white-space: nowrap; /* Impede que o texto quebre a linha */
+}
