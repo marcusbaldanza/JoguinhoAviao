@@ -228,3 +228,11 @@ button.danger:hover {
 #hud.phase-3 { --hud-color: #FFD700; } /* Dourado */
 #hud.phase-4 { --hud-color: #F5F5F5; } /* Branco Fumaça */
 #hud.phase-5 { --hud-color: #E53935; } /* Vermelho Intenso */
+
+/* Estilo para a insígnia no ranking */
+#ranking-table .insignia {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle; /* Alinha a imagem com o texto do nome */
+    margin-left: 8px;
+}
