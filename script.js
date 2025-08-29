@@ -50,7 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
         pwCanhao: new Image(),
         pwBomba: new Image(),
         pwSaude: new Image(),
-        chefao: new Image()
+        chefao: new Image(),
+        insignia: new Image()
     };
     const assetSources = {
         player: 'assets/jogador.png',
@@ -70,7 +71,8 @@ document.addEventListener('DOMContentLoaded', () => {
         pwCanhao: 'assets/PWcanhao.png',
         pwBomba: 'assets/PWbomba.png',
         pwSaude: 'assets/PWsaude.png',
-        chefao: 'assets/chefao.png'
+        chefao: 'assets/chefao.png',
+        insignia: 'assets/insigniaBrasil.png'
     };
     let assetsLoaded = 0;
     const totalAssets = Object.keys(assetSources).length;
@@ -103,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const SCALING_SCORE_THRESHOLD = 100;
     const KILLS_TO_SPAWN_BOSS_BASE = 40;
     const KILLS_TO_SPAWN_BOSS_INCREMENT = 20;
+    const MAX_DELTA_TIME = 1000 / 30;
 
     // --- ESTADO DO JOGO ---
     let gameState = {};
@@ -118,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentBackground,
         screenFlash = {
             alpha: 0,
-            duration: 20,
+            duration: 400,
             timer: 0
         },
         whiteoutFlash = {
@@ -137,6 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ArrowRight: false,
         ' ': false
     };
+    let lastTime = 0;
 
     // --- CLASSES DO JOGO ---
 
@@ -146,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.height = 65;
             this.x = canvas.width / 2 - this.width / 2;
             this.y = canvas.height - this.height - 20;
-            this.baseSpeed = 300 / 60;
+            this.baseSpeed = 300;
             this.speed = this.baseSpeed;
             this.health = PLAYER_STARTING_HEALTH;
             this.maxHealth = PLAYER_STARTING_HEALTH;
@@ -165,40 +169,40 @@ document.addEventListener('DOMContentLoaded', () => {
             this.image = assets.player;
             this.shotDamage = this.baseDamage;
             this.bulletWidth = 6;
-            this.bulletSpeed = 7;
+            this.bulletSpeed = 420;
             this.numShots = 1;
         }
 
         updatePowerStats() {
             const level = this.powerUpLevels.cannon;
             let calculatedDamage = this.baseDamage;
-            let currentBulletSpeed = 7;
+            let currentBulletSpeed = 420;
             this.numShots = 1;
             this.bulletWidth = 6;
             this.image = assets.player;
             if (level >= 1) {
                 this.numShots = 2;
                 this.image = assets.player2;
-                calculatedDamage *= 1.25;
+                calculatedDamage *= 1.3;
             }
             if (level >= 2) {
                 this.bulletWidth = 12;
                 this.image = assets.player3;
-                calculatedDamage *= 1.30;
+                calculatedDamage *= 1.25;
             }
             if (level >= 3) {
-                currentBulletSpeed = 7 * 1.5;
+                currentBulletSpeed = 420 * 1.5;
                 this.image = assets.player4;
-                calculatedDamage *= 1.25;
+                calculatedDamage *= 1.2;
             }
             if (level >= 4) {
                 this.numShots = 4;
-                calculatedDamage *= 1.50;
+                calculatedDamage *= 1.15;
             }
             if (level > 4) {
                 const bonusLevels = level - 4;
-                calculatedDamage *= Math.pow(1.50, bonusLevels);
-                currentBulletSpeed *= Math.pow(1.20, bonusLevels);
+                calculatedDamage *= Math.pow(1.05, bonusLevels);
+                currentBulletSpeed *= Math.pow(1.05, bonusLevels);
             }
             this.shotDamage = calculatedDamage;
             this.bulletSpeed = currentBulletSpeed;
@@ -218,13 +222,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        update() {
+        update(deltaTime) {
             if (this.isInvincible && Date.now() > this.invincibilityEndTime) this.isInvincible = false;
             this.handleDamageSmoke();
-            if (keys.ArrowUp && this.y > 0) this.y -= this.speed;
-            if (keys.ArrowDown && this.y < canvas.height - this.height) this.y += this.speed;
-            if (keys.ArrowLeft && this.x > 0) this.x -= this.speed;
-            if (keys.ArrowRight && this.x < canvas.width - this.width) this.x += this.speed;
+            const moveDistance = this.speed * (deltaTime / 1000);
+            if (keys.ArrowUp && this.y > 0) this.y -= moveDistance;
+            if (keys.ArrowDown && this.y < canvas.height - this.height) this.y += moveDistance;
+            if (keys.ArrowLeft && this.x > 0) this.x -= moveDistance;
+            if (keys.ArrowRight && this.x < canvas.width - this.width) this.x += moveDistance;
             if (keys[' '] && Date.now() - this.lastShotTime > this.shootCooldown) {
                 this.shoot();
                 this.lastShotTime = Date.now();
@@ -299,13 +304,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.shadowBlur = 0;
             }
         }
-        update() {
+        update(deltaTime) {
+            const moveDistance = this.speed * (deltaTime / 1000);
             if (this.isHoming && player) {
                 const targetX = player.x + player.width / 2 - this.width / 2;
                 const dx = targetX - this.x;
-                this.x += dx * 0.05;
+                this.x += dx * 3 * (deltaTime / 1000);
             }
-            this.y += this.speed * this.direction;
+            this.y += moveDistance * this.direction;
         }
     }
 
@@ -319,22 +325,36 @@ document.addEventListener('DOMContentLoaded', () => {
             this.baseHealth = baseHealth;
             this.maxHealth = baseHealth;
             this.health = baseHealth;
-            this.baseSpeed = baseSpeed / 60;
+            this.baseSpeed = baseSpeed;
             this.baseDamage = baseDamage;
             this.scoreValue = scoreValue;
             this.type = type;
             this.minShootInterval = 2000;
             this.nextShotTime = Date.now() + Math.random() * 4000 + this.minShootInterval;
+
+            // Define a trajetória apenas para aviões, na sua criação
+            this.normalizedX = 0;
+            this.normalizedY = 1;
+            if ((this.type === 'ap' || this.type === 'ip') && player) {
+                const dirX = (player.x + player.width / 2) - (this.x + this.width / 2);
+                const dirY = canvas.height; // Mira um ponto bem abaixo da tela
+                const magnitude = Math.sqrt(dirX * dirX + dirY * dirY);
+                if (magnitude > 0) {
+                    this.normalizedX = dirX / magnitude;
+                    this.normalizedY = dirY / magnitude;
+                }
+            }
             this.updateStatsForLevel();
         }
         updateStatsForLevel() {
             const levelMultiplier = Math.floor(gameState.score / SCALING_SCORE_THRESHOLD);
-            const newMaxHealth = this.baseHealth * Math.pow(1.04, levelMultiplier);
+            const dampenedMultiplier = Math.log1p(levelMultiplier) * 10;
+            const newMaxHealth = this.baseHealth * (1 + (dampenedMultiplier * 0.06));
             const healthPercentage = this.health / this.maxHealth;
             this.maxHealth = newMaxHealth;
             this.health = this.maxHealth * (isNaN(healthPercentage) ? 1 : healthPercentage);
-            this.speed = this.baseSpeed * Math.pow(1.05, levelMultiplier);
-            this.damage = this.baseDamage * Math.pow(1.06, levelMultiplier);
+            this.speed = this.baseSpeed * (1 + (dampenedMultiplier * 0.03));
+            this.damage = this.baseDamage * (1 + (dampenedMultiplier * 0.06));
         }
         draw() {
             ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
@@ -352,15 +372,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.fillRect(this.x, this.y - yOffset, currentHealthWidth, barHeight);
             }
         }
-        update() {
-            this.y += this.speed;
-            const targetX = player.x + player.width / 2 - this.width / 2;
-            const dx = targetX - this.x;
-            if (Math.abs(dx) > this.speed) this.x += Math.sign(dx) * this.speed * 0.5;
-            this.avoidOverlap();
+        update(deltaTime) {
+            const moveDistance = this.speed * (deltaTime / 1000);
+
+            if (this.type === 'ap' || this.type === 'ip') {
+                // Aviões: Seguem uma trajetória reta e fixa
+                this.x += this.normalizedX * moveDistance;
+                this.y += this.normalizedY * moveDistance;
+            } else {
+                // Helicópteros: Descida vertical constante + movimento lateral para seguir o jogador
+                const dirX = (player.x + player.width / 2) - (this.x + this.width / 2);
+                const dirY = this.baseSpeed * 0.75; // Garante um componente vertical forte e constante
+                const magnitude = Math.sqrt(dirX * dirX + dirY * dirY);
+                if (magnitude > 0) {
+                    this.x += (dirX / magnitude) * moveDistance;
+                    this.y += (dirY / magnitude) * moveDistance;
+                } else {
+                    this.y += moveDistance;
+                }
+            }
+
+            this.avoidOverlap(deltaTime);
             this.attemptToShoot();
         }
-        avoidOverlap() {
+        avoidOverlap(deltaTime) {
             for (const other of enemies) {
                 if (other === this) continue;
                 const dx = this.x - other.x,
@@ -369,34 +404,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 const minDistance = (this.width + other.width) / 2.5;
                 if (distance < minDistance) {
                     const angle = Math.atan2(dy, dx);
-                    this.x += Math.cos(angle) * (minDistance - distance) * 0.1;
-                    this.y += Math.sin(angle) * (minDistance - distance) * 0.1;
+                    const repulsionSpeed = 30;
+                    const pushDistance = repulsionSpeed * (deltaTime / 1000);
+                    this.x += Math.cos(angle) * pushDistance;
+                    this.y += Math.sin(angle) * pushDistance;
                 }
             }
         }
-        attemptToShoot() {
-            const now = Date.now();
-            if (now > this.nextShotTime) {
-                if ((player.x < this.x + this.width) && (player.x + player.width > this.x)) {
-                    this.nextShotTime = now + this.minShootInterval + Math.random() * 2000;
-                    let bodyColor = 'white',
-                        tipColor, glowColor, bulletSpeed;
-                    if (this.type === 'ah' || this.type === 'ih') {
-                        bulletSpeed = 3.5;
-                    } else {
-                        bulletSpeed = 6;
-                    }
-                    if (this.type === 'ap' || this.type === 'ah') {
-                        tipColor = '#FF0000';
-                        glowColor = '#FF0000';
-                    } else {
-                        tipColor = '#00FFFF';
-                        glowColor = '#00FFFF';
-                    }
-                    enemyBullets.push(new Bullet(this.x + this.width / 2 - 2, this.y + this.height, 4, 12, bodyColor, tipColor, bulletSpeed, this.damage, 1, glowColor));
-                }
-            }
-        }
+		attemptToShoot() {
+			const now = Date.now();
+			if (now > this.nextShotTime) {
+				// A verificação de alinhamento horizontal foi removida daqui.
+				this.nextShotTime = now + this.minShootInterval + Math.random() * 2000;
+				let bodyColor = 'white',
+					tipColor, glowColor, bulletSpeed;
+					
+				if (this.type === 'ah' || this.type === 'ih') {
+					bulletSpeed = 210;
+				} else {
+					bulletSpeed = 360;
+				}
+
+				if (this.type === 'ap' || this.type === 'ah') {
+					tipColor = '#FF0000';
+					glowColor = '#FF0000';
+				} else {
+					tipColor = '#00FFFF';
+					glowColor = '#00FFFF';
+				}
+				enemyBullets.push(new Bullet(this.x + this.width / 2 - 2, this.y + this.height, 4, 12, bodyColor, tipColor, bulletSpeed, this.damage, 1, glowColor));
+			}
+		}
         takeDamage(damage) {
             this.health -= damage;
             floatingTexts.push(new FloatingText(this.x + this.width / 2, this.y, Math.round(damage), '#FFFF00'));
@@ -411,7 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.width = 90;
             this.height = 90;
             this.type = type;
-            this.speed = 2;
+            this.speed = 120;
             this.blinkInterval = 300;
             this.lastBlinkTime = Date.now();
             this.isBlinkingOn = true;
@@ -447,8 +485,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (imageToDraw && imageToDraw.complete) ctx.drawImage(imageToDraw, this.x, this.y, this.width, this.height);
             ctx.shadowBlur = 0;
         }
-        update() {
-            this.y += this.speed;
+        update(deltaTime) {
+            this.y += this.speed * (deltaTime / 1000);
         }
     }
 
@@ -458,23 +496,23 @@ document.addEventListener('DOMContentLoaded', () => {
             this.y = y;
             if (isSmoke) {
                 this.size = Math.random() * 4 + 3;
-                this.speedX = Math.random() * 2 - 1;
-                this.speedY = Math.random() * 0.5 + 0.2;
-                this.lifespan = 40;
+                this.speedX = (Math.random() * 2 - 1) * 60;
+                this.speedY = (Math.random() * 0.5 + 0.2) * 60;
+                this.lifespan = 667;
             } else {
                 this.size = Math.random() * 5 + 2;
-                this.speedX = Math.random() * 8 - 4;
-                this.speedY = Math.random() * 8 - 4;
-                this.lifespan = 50;
+                this.speedX = (Math.random() * 8 - 4) * 60;
+                this.speedY = (Math.random() * 8 - 4) * 60;
+                this.lifespan = 833;
             }
             this.color = color;
             this.initialLifespan = this.lifespan;
             this.opacity = 1;
         }
-        update() {
-            this.x += this.speedX;
-            this.y += this.speedY;
-            this.lifespan--;
+        update(deltaTime) {
+            this.x += this.speedX * (deltaTime / 1000);
+            this.y += this.speedY * (deltaTime / 1000);
+            this.lifespan -= deltaTime;
             this.opacity = this.lifespan / this.initialLifespan;
         }
         draw() {
@@ -494,13 +532,14 @@ document.addEventListener('DOMContentLoaded', () => {
             this.y = y;
             this.text = text;
             this.color = color;
-            this.lifespan = 60;
-            this.initialLifespan = 60;
+            this.lifespan = 1000;
+            this.initialLifespan = 1000;
             this.opacity = 1;
+            this.speedY = -30;
         }
-        update() {
-            this.y -= 0.5;
-            this.lifespan--;
+        update(deltaTime) {
+            this.y += this.speedY * (deltaTime / 1000);
+            this.lifespan -= deltaTime;
             this.opacity = this.lifespan / this.initialLifespan;
         }
         draw() {
@@ -516,25 +555,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     class Boss {
         constructor() {
-            this.width = 180;
-            this.height = 180;
-            this.x = canvas.width / 2 - this.width / 2;
-            this.y = 50;
-            this.image = assets.chefao;
-            this.creationTime = Date.now();
-            const levelMultiplier = Math.floor(gameState.score / SCALING_SCORE_THRESHOLD);
-            const baseHeliHealth = 100 * Math.pow(1.04, levelMultiplier);
-            this.maxHealth = baseHeliHealth * 12;
-            this.health = this.maxHealth;
-            this.speed = ((20 / 60) * 2.5) * 1.35;
-            this.scoreValue = 300;
-            const basePlaneDamage = 25 * Math.pow(1.06, levelMultiplier);
-            this.bulletDamage = basePlaneDamage * 2;
-            this.shootCooldown = 1500;
-            this.lastShotTime = Date.now();
-            this.battleStartTime = Date.now();
-            this.nextSuperShotTime = 0;
-        }
+			this.width = 180; this.height = 180; this.x = canvas.width / 2 - this.width / 2; this.y = 50;
+			this.image = assets.chefao; this.creationTime = Date.now();
+			const levelMultiplier = Math.floor(gameState.score / SCALING_SCORE_THRESHOLD);
+			const dampenedMultiplier = Math.log1p(levelMultiplier) * 10;
+			const baseHeliHealth = 100 * (1 + (dampenedMultiplier * 0.04));
+			this.maxHealth = baseHeliHealth * 20; this.health = this.maxHealth;
+			this.speed = 50 * 1.35;
+			this.scoreValue = 300;
+			const basePlaneDamage = 25 * (1 + (dampenedMultiplier * 0.06));
+			this.bulletDamage = basePlaneDamage * 2; this.shootCooldown = 1500; this.lastShotTime = Date.now();
+			this.battleStartTime = Date.now(); this.nextSuperShotTime = 0;
+
+			// --- ADIÇÃO DA LÓGICA DE ESCALA DE VELOCIDADE DOS TIROS ---
+			const phaseScalingFactor = Math.pow(1.15, gameState.phase - 1); // Aumento de 15% por fase
+
+			this.scaledOuterSpeed = 720 * phaseScalingFactor; // Tiro externo
+			this.scaledInnerSpeed = 210 * phaseScalingFactor; // Tiro interno (teleguiado)
+			this.scaledSuperShotSpeed = 150 * phaseScalingFactor; // Super tiro
+		}
         draw() {
             const pulse = Math.sin((Date.now() - this.creationTime) / 400) * 10 + 20;
             ctx.shadowBlur = pulse;
@@ -554,49 +593,49 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.fillStyle = 'red';
             ctx.fillRect(x, y, currentHealthWidth, barHeight);
         }
-        update() {
+        update(deltaTime) {
+            const moveDistance = this.speed * (deltaTime / 1000);
             const targetX = player.x + player.width / 2 - this.width / 2;
             const dx = targetX - this.x;
-            if (Math.abs(dx) > this.speed) this.x += Math.sign(dx) * this.speed;
+            if (Math.abs(dx) > moveDistance) this.x += Math.sign(dx) * moveDistance;
             if (this.x < 0) this.x = 0;
             if (this.x > canvas.width - this.width) this.x = canvas.width - this.width;
             this.attemptToShoot();
             this.attemptSuperShot();
         }
         attemptToShoot() {
-            if (Date.now() - this.lastShotTime > this.shootCooldown) {
-                this.lastShotTime = Date.now();
-                const rG = ctx.createLinearGradient(0, 0, 0, 12);
-                rG.addColorStop(0, "red");
-                rG.addColorStop(1, "purple");
-                const oS = 12,
-                    oW = 8;
-                bossBullets.push(new Bullet(this.x + 10, this.y + 100, oW, 12, 'white', rG, oS, this.bulletDamage, 1, 'white', false));
-                bossBullets.push(new Bullet(this.x + this.width - 10 - oW, this.y + 100, oW, 12, 'white', rG, oS, this.bulletDamage, 1, 'white', false));
-                const iS = 3.5,
-                    iW = 12;
-                bossBullets.push(new Bullet(this.x + 50, this.y + 120, iW, 12, 'white', rG, iS, this.bulletDamage, 1, 'white', true));
-                bossBullets.push(new Bullet(this.x + this.width - 50 - iW, this.y + 120, iW, 12, 'white', rG, iS, this.bulletDamage, 1, 'white', true));
-            }
-        }
+			if (Date.now() - this.lastShotTime > this.shootCooldown) {
+				this.lastShotTime = Date.now();
+				const rG = ctx.createLinearGradient(0, 0, 0, 12);
+				rG.addColorStop(0, "red"); rG.addColorStop(1, "purple");
+				
+				// Usa a velocidade escalonada calculada no construtor
+				const oS = this.scaledOuterSpeed, oW = 8;
+				bossBullets.push(new Bullet(this.x + 10, this.y + 100, oW, 12, 'white', rG, oS, this.bulletDamage, 1, 'white', false));
+				bossBullets.push(new Bullet(this.x + this.width - 10 - oW, this.y + 100, oW, 12, 'white', rG, oS, this.bulletDamage, 1, 'white', false));
+				
+				// Usa a velocidade escalonada calculada no construtor
+				const iS = this.scaledInnerSpeed, iW = 12;
+				bossBullets.push(new Bullet(this.x + 50, this.y + 120, iW, 12, 'white', rG, iS, this.bulletDamage, 1, 'white', true));
+				bossBullets.push(new Bullet(this.x + this.width - 50 - iW, this.y + 120, iW, 12, 'white', rG, iS, this.bulletDamage, 1, 'white', true));
+			}
+		}
         attemptSuperShot() {
-            if (gameState.phase < 3 || Date.now() - this.battleStartTime < 10000) return;
-            if (this.nextSuperShotTime === 0) this.nextSuperShotTime = Date.now() + Math.random() * 5000 + 3000;
-            if (Date.now() > this.nextSuperShotTime) {
-                const lM = Math.floor(gameState.score / SCALING_SCORE_THRESHOLD);
-                const sD = (25 * Math.pow(1.06, lM)) * 4,
-                    sW = 60;
-                const rG = ctx.createLinearGradient(0, 0, sW, 0);
-                rG.addColorStop(0, "red");
-                rG.addColorStop(0.2, "orange");
-                rG.addColorStop(0.4, "yellow");
-                rG.addColorStop(0.6, "green");
-                rG.addColorStop(0.8, "blue");
-                rG.addColorStop(1, "purple");
-                bossBullets.push(new Bullet(this.x + this.width / 2 - sW / 2, this.y + 140, sW, 20, rG, rG, 2.5, sD, 1, 'white', false));
-                this.nextSuperShotTime = Date.now() + Math.random() * 5000 + 4000;
-            }
-        }
+			if (gameState.phase < 3 || Date.now() - this.battleStartTime < 10000) return;
+			if (this.nextSuperShotTime === 0) this.nextSuperShotTime = Date.now() + Math.random() * 5000 + 3000;
+			if (Date.now() > this.nextSuperShotTime) {
+				const levelMultiplier = Math.floor(gameState.score / SCALING_SCORE_THRESHOLD);
+				const dampenedMultiplier = Math.log1p(levelMultiplier) * 10;
+				const sD = (25 * (1 + (dampenedMultiplier * 0.06))) * 4, sW = 60;
+				const rG = ctx.createLinearGradient(0, 0, sW, 0);
+				rG.addColorStop(0, "red"); rG.addColorStop(0.2, "orange"); rG.addColorStop(0.4, "yellow");
+				rG.addColorStop(0.6, "green"); rG.addColorStop(0.8, "blue"); rG.addColorStop(1, "purple");
+				
+				// Usa a velocidade escalonada calculada no construtor
+				bossBullets.push(new Bullet(this.x + this.width / 2 - sW / 2, this.y + 140, sW, 20, rG, rG, this.scaledSuperShotSpeed, sD, 1, 'white', false));
+				this.nextSuperShotTime = Date.now() + Math.random() * 5000 + 4000;
+			}
+		}
         takeDamage(damage) {
             this.health -= damage;
             floatingTexts.push(new FloatingText(this.x + Math.random() * this.width, this.y + Math.random() * this.height, Math.round(damage), '#FFFF00'));
@@ -618,8 +657,8 @@ document.addEventListener('DOMContentLoaded', () => {
         particles = [];
         floatingTexts = [];
         backgroundY = 0;
+        lastTime = 0;
         gameState = {
-            ...gameState,
             killsSinceBoss: 0,
             bossActive: false,
             bossesDefeated: 0,
@@ -627,11 +666,13 @@ document.addEventListener('DOMContentLoaded', () => {
             killsNeededForNextBoss: KILLS_TO_SPAWN_BOSS_BASE,
             totalKills: 0,
             nextPowerUpKillCount: Math.floor(Math.random() * 3) + 5,
+            playerName: gameState.playerName,
             score: 0,
             level: 1,
             startTime: Date.now(),
             elapsedTime: 0,
             isGameOver: false,
+            animationFrameId: null,
             killCounts: {
                 ap: 0,
                 ip: 0,
@@ -650,14 +691,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function startGame() {
-        const name = playerNameInput.value.trim();
-        if (name === '') return alert('Por favor, insira um nome de combatente.');
-        gameState.playerName = name;
-        hudPlayerName.textContent = name;
+        if (!playerNameInput.value.trim()) {
+            return alert('Por favor, insira um nome de combatente.');
+        }
+        gameState.playerName = playerNameInput.value.trim();
+        hudPlayerName.textContent = gameState.playerName;
         startScreen.classList.remove('active');
         gameContainer.style.display = 'block';
         resetGame();
-        gameLoop();
+        gameLoop(0);
     }
 
     function spawnBoss() {
@@ -708,10 +750,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (gameState.bossActive || enemies.length >= ENEMY_LIMIT) return;
         const rand = Math.random();
         let newEnemy;
-        if (rand < 0.3) newEnemy = new Enemy(assets.aviaoEUA, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 50, 20, 25, 30, 'ap');
-        else if (rand < 0.6) newEnemy = new Enemy(assets.aviaoISRAEL, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 40, 25, 20, 25, 'ip');
-        else if (rand < 0.8) newEnemy = new Enemy(assets.helicopteroEUA, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 100, 10, 20, 20, 'ah');
-        else newEnemy = new Enemy(assets.helicopteroISRAEL, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 80, 8, 16, 15, 'ih');
+        if (rand < 0.3) newEnemy = new Enemy(assets.aviaoEUA, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 70, 180, 21, 29, 'ap');
+        else if (rand < 0.6) newEnemy = new Enemy(assets.aviaoISRAEL, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 65, 160, 18, 24, 'ip');
+        else if (rand < 0.8) newEnemy = new Enemy(assets.helicopteroEUA, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 100, 115, 14, 19, 'ah');
+        else newEnemy = new Enemy(assets.helicopteroISRAEL, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 85, 100, 12, 14, 'ih');
         enemies.push(newEnemy);
     }
 
@@ -781,7 +823,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         createExplosion(enemies[j].x + enemies[j].width / 2, enemies[j].y + enemies[j].height / 2);
                         if (gameState.totalKills >= gameState.nextPowerUpKillCount) {
                             spawnRandomPowerUp();
-                            gameState.nextPowerUpKillCount = gameState.totalKills + Math.floor(Math.random() * 3) + 5;
+                            const baseInterval = Math.floor(Math.random() * 3) + 5; // O intervalo base de 5 a 7
+							const phaseBonus = (gameState.phase - 1) * 10; // Adiciona 10 por fase (0 na fase 1, 10 na 2, etc.)
+							gameState.nextPowerUpKillCount = gameState.totalKills + baseInterval + phaseBonus;
                         }
                         if (!gameState.bossActive && gameState.killsSinceBoss >= gameState.killsNeededForNextBoss) spawnBoss();
                         enemies.splice(j, 1);
@@ -831,37 +875,37 @@ document.addEventListener('DOMContentLoaded', () => {
         return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.y + rect1.height > rect2.y;
     }
 
-    function updateGame() {
+    function updateGame(deltaTime) {
         if (gameState.isGameOver) return;
-        player.update();
-        if (gameState.bossActive && boss) boss.update();
-        playerBullets.forEach(b => b.update());
+        player.update(deltaTime);
+        if (gameState.bossActive && boss) boss.update(deltaTime);
+        playerBullets.forEach(b => b.update(deltaTime));
         playerBullets = playerBullets.filter(b => b.y > -b.height);
-        enemies.forEach(e => e.update());
+        enemies.forEach(e => e.update(deltaTime));
         enemies = enemies.filter(e => e.y < canvas.height + 50);
-        enemyBullets.forEach(b => b.update());
+        enemyBullets.forEach(b => b.update(deltaTime));
         enemyBullets = enemyBullets.filter(b => b.y < canvas.height);
-        bossBullets.forEach(b => b.update());
+        bossBullets.forEach(b => b.update(deltaTime));
         bossBullets = bossBullets.filter(b => b.y < canvas.height);
-        powerUps.forEach(p => p.update());
+        powerUps.forEach(p => p.update(deltaTime));
         powerUps = powerUps.filter(p => p.y < canvas.height + p.height);
         for (let i = particles.length - 1; i >= 0; i--) {
-            particles[i].update();
+            particles[i].update(deltaTime);
             if (particles[i].lifespan <= 0) particles.splice(i, 1);
         }
         for (let i = floatingTexts.length - 1; i >= 0; i--) {
-            floatingTexts[i].update();
+            floatingTexts[i].update(deltaTime);
             if (floatingTexts[i].lifespan <= 0) floatingTexts.splice(i, 1);
         }
-        if (whiteoutFlash.timer > 0) whiteoutFlash.timer -= 1000 / 60;
-        if (phaseMessage.timer > 0) phaseMessage.timer -= 1000 / 60;
+        if (whiteoutFlash.timer > 0) whiteoutFlash.timer -= deltaTime;
+        if (phaseMessage.timer > 0) phaseMessage.timer -= deltaTime;
         if (screenFlash.timer > 0) {
-            screenFlash.timer--;
-            screenFlash.alpha = (screenFlash.timer / screenFlash.duration) * 0.7;
+            screenFlash.timer -= deltaTime;
+            screenFlash.alpha = (screenFlash.timer / screenFlash.duration);
         } else {
             screenFlash.alpha = 0;
         }
-        spawnEnemy();
+        if (Math.random() < 0.025) spawnEnemy();
         checkCollisions();
         const newLevel = 1 + Math.floor(gameState.score / SCALING_SCORE_THRESHOLD);
         if (newLevel > gameState.level) {
@@ -872,7 +916,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         gameState.elapsedTime = Date.now() - gameState.startTime;
         updateHUD();
-        backgroundY += 2;
+        backgroundY += 120 * (deltaTime / 1000);
         if (backgroundY >= canvas.height) backgroundY = 0;
     }
 
@@ -910,9 +954,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function gameLoop() {
+    function gameLoop(timestamp) {
+        if (!lastTime) lastTime = timestamp;
+        let deltaTime = timestamp - lastTime;
+        lastTime = timestamp;
+        if (deltaTime > MAX_DELTA_TIME) {
+            deltaTime = MAX_DELTA_TIME;
+        }
         if (gameState.isGameOver) return;
-        updateGame();
+        updateGame(deltaTime);
         drawGame();
         gameState.animationFrameId = requestAnimationFrame(gameLoop);
     }
@@ -925,7 +975,7 @@ document.addEventListener('DOMContentLoaded', () => {
         hudFeatherLevel.textContent = `x${player.powerUpLevels.feather}`;
         hudCannonLevel.textContent = `x${player.powerUpLevels.cannon}`;
         hudDamage.textContent = Math.round(player.shotDamage);
-        hudSpeed.textContent = Math.round(player.speed * 10);
+        hudSpeed.textContent = Math.round(player.speed);
     }
 
     function updateHudColor() {
@@ -945,6 +995,7 @@ document.addEventListener('DOMContentLoaded', () => {
             score: gameState.score,
             level: gameState.level,
             bosses: gameState.bossesDefeated,
+            hasInsignia: gameState.bossesDefeated >= 5,
             time: formatTime(gameState.elapsedTime),
             kills: gameState.killCounts,
             powerups: Object.values(gameState.powerupsCollected).reduce((a, b) => a + b, 0)
@@ -969,7 +1020,11 @@ document.addEventListener('DOMContentLoaded', () => {
         rankings.forEach((entry, index) => {
             const row = document.createElement('tr');
             const killString = `A:${entry.kills.ap+entry.kills.ah} I:${entry.kills.ip+entry.kills.ih}`;
-            row.innerHTML = `<td>${index + 1}</td><td>${entry.name}</td><td>${entry.score}</td><td>${entry.level}</td><td>${entry.bosses || 0}</td><td>${entry.time}</td><td>${killString}</td><td>${entry.powerups}</td>`;
+            let nameCellHTML = entry.name;
+            if (entry.hasInsignia) {
+                nameCellHTML += ` <img src="assets/insigniaBrasil.png" class="insignia" title="Elite: 5+ Chefes Derrotados">`;
+            }
+            row.innerHTML = `<td>${index + 1}</td><td>${nameCellHTML}</td><td>${entry.score}</td><td>${entry.level}</td><td>${entry.bosses || 0}</td><td>${entry.time}</td><td>${killString}</td><td>${entry.powerups}</td>`;
             tableBody.appendChild(row);
         });
     }
@@ -980,7 +1035,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gameOverScreen.classList.remove('active');
         gameContainer.style.display = 'block';
         resetGame();
-        gameLoop();
+        gameLoop(0);
     });
     newPlayerBtn.addEventListener('click', () => {
         gameOverScreen.classList.remove('active');
