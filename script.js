@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const hudDamage = document.getElementById('hud-damage');
     const hudSpeed = document.getElementById('hud-speed');
     const finalBossesDefeated = document.getElementById('final-bosses-defeated');
+	const finalKillsJp = document.getElementById('final-kills-jp'); // ADICIONE ESTA LINHA
 
     canvas.width = 800;
     canvas.height = 600;
@@ -39,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
         player4: new Image(),
         aviaoEUA: new Image(),
         aviaoISRAEL: new Image(),
+		aviaoJAPAO: new Image(),
         helicopteroEUA: new Image(),
         helicopteroISRAEL: new Image(),
         cenario1: new Image(),
@@ -60,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
         player4: 'assets/jogador4.png',
         aviaoEUA: 'assets/aviaoEUA.png',
         aviaoISRAEL: 'assets/aviaoISRAEL.png',
+		aviaoJAPAO: 'assets/aviaoJAPAO.png',
         helicopteroEUA: 'assets/helicopteroEUA.png',
         helicopteroISRAEL: 'assets/helicopteroISRAEL.png',
         cenario1: 'assets/cenariojogo.png',
@@ -101,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ENEMY_STD_WIDTH = 60;
     const ENEMY_STD_HEIGHT = 60;
     const PLAYER_STARTING_HEALTH = 100;
-    const ENEMY_LIMIT = 7;
+    const BASE_ENEMY_LIMIT = 7;
     const SCALING_SCORE_THRESHOLD = 100;
     const KILLS_TO_SPAWN_BOSS_BASE = 40;
     const KILLS_TO_SPAWN_BOSS_INCREMENT = 20;
@@ -418,7 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				this.nextShotTime = now + this.minShootInterval + Math.random() * 2000;
 				let bodyColor = 'white',
 					tipColor, glowColor, bulletSpeed;
-					
+
 				if (this.type === 'ah' || this.type === 'ih') {
 					bulletSpeed = 210;
 				} else {
@@ -428,9 +431,13 @@ document.addEventListener('DOMContentLoaded', () => {
 				if (this.type === 'ap' || this.type === 'ah') {
 					tipColor = '#FF0000';
 					glowColor = '#FF0000';
-				} else {
+				} else if (this.type === 'ip' || this.type === 'ih') {
 					tipColor = '#00FFFF';
 					glowColor = '#00FFFF';
+				} else if (this.type === 'jp') { // NOVO TRECHO
+					bodyColor = '#FF0000'; // Corpo vermelho
+					tipColor = '#FF0000';  // Ponta vermelha
+					glowColor = '#FF0000'; // Brilho vermelho
 				}
 				enemyBullets.push(new Bullet(this.x + this.width / 2 - 2, this.y + this.height, 4, 12, bodyColor, tipColor, bulletSpeed, this.damage, 1, glowColor));
 			}
@@ -675,9 +682,10 @@ document.addEventListener('DOMContentLoaded', () => {
             animationFrameId: null,
             killCounts: {
                 ap: 0,
-                ip: 0,
-                ah: 0,
-                ih: 0
+				ip: 0,
+				ah: 0,
+				ih: 0,
+				jp: 0 // Novo contador japones
             },
             powerupsCollected: {
                 feather: 0,
@@ -737,7 +745,8 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('final-kills-ip').textContent = gameState.killCounts.ip;
         document.getElementById('final-kills-ah').textContent = gameState.killCounts.ah;
         document.getElementById('final-kills-ih').textContent = gameState.killCounts.ih;
-        document.getElementById('final-powerups').textContent = `Penas: ${gameState.powerupsCollected.feather}, Canhões: ${gameState.powerupsCollected.cannon}, Bombas: ${gameState.powerupsCollected.bomb}, Curas: ${gameState.powerupsCollected.health}`;
+        if (finalKillsJp) finalKillsJp.textContent = gameState.killCounts.jp;
+		document.getElementById('final-powerups').textContent = `Penas: ${gameState.powerupsCollected.feather}, Canhões: ${gameState.powerupsCollected.cannon}, Bombas: ${gameState.powerupsCollected.bomb}, Curas: ${gameState.powerupsCollected.health}`;
         gameContainer.style.display = 'none';
         gameOverScreen.classList.add('active');
     }
@@ -747,15 +756,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function spawnEnemy() {
-        if (gameState.bossActive || enemies.length >= ENEMY_LIMIT) return;
-        const rand = Math.random();
-        let newEnemy;
-        if (rand < 0.3) newEnemy = new Enemy(assets.aviaoEUA, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 70, 180, 21, 29, 'ap');
-        else if (rand < 0.6) newEnemy = new Enemy(assets.aviaoISRAEL, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 65, 160, 18, 24, 'ip');
-        else if (rand < 0.8) newEnemy = new Enemy(assets.helicopteroEUA, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 100, 115, 14, 19, 'ah');
+    const currentEnemyLimit = BASE_ENEMY_LIMIT + (gameState.phase - 1);
+    if (gameState.bossActive || enemies.length >= currentEnemyLimit) return;
+    const rand = Math.random();
+    let newEnemy;
+
+    if (gameState.phase < 4) {
+        // Lógica de spawn para as fases 1, 2 e 3 (25% cada)
+        if (rand < 0.25) newEnemy = new Enemy(assets.aviaoEUA, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 70, 180, 21, 29, 'ap');
+        else if (rand < 0.5) newEnemy = new Enemy(assets.aviaoISRAEL, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 65, 160, 18, 24, 'ip');
+        else if (rand < 0.75) newEnemy = new Enemy(assets.helicopteroEUA, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 100, 115, 14, 19, 'ah');
         else newEnemy = new Enemy(assets.helicopteroISRAEL, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 85, 100, 12, 14, 'ih');
-        enemies.push(newEnemy);
+    } else {
+        // Nova lógica de spawn a partir da fase 4 (20% para cada)
+        if (rand < 0.2) newEnemy = new Enemy(assets.aviaoEUA, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 70, 180, 21, 29, 'ap');
+        else if (rand < 0.4) newEnemy = new Enemy(assets.aviaoISRAEL, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 65, 160, 18, 24, 'ip');
+        else if (rand < 0.6) newEnemy = new Enemy(assets.helicopteroEUA, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 100, 115, 14, 19, 'ah');
+        else if (rand < 0.8) newEnemy = new Enemy(assets.helicopteroISRAEL, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 85, 100, 12, 14, 'ih');
+        else newEnemy = new Enemy(assets.aviaoJAPAO, ENEMY_STD_WIDTH, ENEMY_STD_HEIGHT, 50, 230, 15, 18, 'jp');
     }
+    enemies.push(newEnemy);
+}
 
     function spawnRandomPowerUp() {
         const rand = Math.random();
@@ -908,12 +929,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (Math.random() < 0.025) spawnEnemy();
         checkCollisions();
         const newLevel = 1 + Math.floor(gameState.score / SCALING_SCORE_THRESHOLD);
-        if (newLevel > gameState.level) {
-            gameState.level = newLevel;
-            player.maxHealth = PLAYER_STARTING_HEALTH * (1 + (gameState.level - 1) * 0.10);
-            player.health = Math.min(player.maxHealth, player.health + PLAYER_STARTING_HEALTH * 0.10);
-            enemies.forEach(e => e.updateStatsForLevel());
-        }
+        // VERSÃO CORRIGIDA
+		if (newLevel > gameState.level) {
+			gameState.level = newLevel;
+
+			// Define o ganho de vida com base no nível atual
+			let healthGain = 0;
+			if (newLevel <= 10) {
+				healthGain = 20; // Ganha 20 de vida/vida máxima até o nível 10
+			} else {
+				healthGain = 5;  // Ganha 5 de vida/vida máxima a partir do nível 11
+			}
+
+			player.maxHealth += healthGain;
+			player.health = Math.min(player.maxHealth, player.health + healthGain);
+			
+			enemies.forEach(e => e.updateStatsForLevel());
+		}
         gameState.elapsedTime = Date.now() - gameState.startTime;
         updateHUD();
         backgroundY += 120 * (deltaTime / 1000);
@@ -1019,7 +1051,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         rankings.forEach((entry, index) => {
             const row = document.createElement('tr');
-            const killString = `A:${entry.kills.ap+entry.kills.ah} I:${entry.kills.ip+entry.kills.ih}`;
+            const killString = `A:${entry.kills.ap + entry.kills.ah} I:${entry.kills.ip + entry.kills.ih} J:${entry.kills.jp || 0}`;
             let nameCellHTML = entry.name;
             if (entry.hasInsignia) {
                 nameCellHTML += ` <img src="assets/insigniaBrasil.png" class="insignia" title="Elite: 5+ Chefes Derrotados">`;
