@@ -21,28 +21,37 @@
         <canvas id="game-canvas"></canvas>
         
         <div id="hud">
-            <div class="hud-group">
-                <div>Nome: <span id="hud-player-name"></span></div>
-                <div>Pontuação: <span id="hud-score">0</span></div>
-            </div>
-            <div class="hud-group" id="hud-player-stats">
-                <div>Vida: <span id="hud-health">100%</span></div>
-                <div>Dano: <span id="hud-damage">25</span></div>
-                <div>Velocidade: <span id="hud-speed">30</span></div>
-            </div>
-            <div class="hud-group">
-                <div id="hud-powerups">
-                    <img src="assets/PWvelocidade.png" alt="Velocidade">
-                    <span id="hud-feather-level">x0</span>
-                    <img src="assets/PWcanhao.png" alt="Canhão">
-                    <span id="hud-cannon-level">x0</span>
-                </div>
-            </div>
-            <div class="hud-group">
-                <div>Nível: <span id="hud-level">1</span></div>
-                <div>Tempo: <span id="hud-time">00:00</span></div>
-            </div>
-        </div>
+			<div class="hud-group">
+				<div>Nome: <span id="hud-player-name"></span></div>
+				<div>Pontuação: <span id="hud-score">0</span></div>
+			</div>
+
+			<div class="hud-group" id="hud-player-stats">
+				<div>Vida: <span id="hud-health">100 / 100</span></div>
+				<div>Dano: <span id="hud-damage">25</span></div>
+				<div>Velocidade: <span id="hud-speed">300</span></div>
+			</div>
+
+			<div class="hud-group">
+				<div id="hud-powerups">
+					<img src="assets/PWvelocidade.png" alt="Velocidade">
+					<span id="hud-feather-level">x0</span>
+					<img src="assets/PWcanhao.png" alt="Canhão">
+					<span id="hud-cannon-level">x0</span>
+				</div>
+		</div>
+
+    <div class="hud-group">
+        <div>Nível: <span id="hud-level">1</span></div>
+        <div>Tempo: <span id="hud-time">00:00</span></div>
+		<div class="hud-group" id="boss-progress-section">
+				<div>Próximo Chefe</div>
+				<div id="boss-progress-container">
+					<div id="boss-progress-bar"></div>
+				</div>
+		</div>
+    </div>
+</div>
     </div>
 
     <div id="game-over-screen" class="screen">
