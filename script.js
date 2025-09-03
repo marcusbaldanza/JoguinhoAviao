@@ -28,6 +28,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const hudSpeed = document.getElementById('hud-speed');
     const finalBossesDefeated = document.getElementById('final-bosses-defeated');
 	const finalKillsJp = document.getElementById('final-kills-jp'); // ADICIONE ESTA LINHA
+    const bossProgressBar = document.getElementById('boss-progress-bar'); // Nova referência
+  // --- CONFIGURAÇÃO DO RANKING ONLINE ---
+    // IMPORTANTE: Substitua os valores abaixo pelos seus, obtidos no JSONBin.io
+    const API_KEY = '$2a$10$ijIDXOStIv4MILwJuGppvuuGWjZwuD43v6m3UcH6UCef95XRMwrXS'; // Cole sua Master Key aqui
+    const BIN_ID = '68b8754dd0ea881f4070a142'; // Cole o ID do seu Bin aqui
+    const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
 
     canvas.width = 800;
     canvas.height = 600;
@@ -1008,6 +1015,22 @@ document.addEventListener('DOMContentLoaded', () => {
         hudCannonLevel.textContent = `x${player.powerUpLevels.cannon}`;
         hudDamage.textContent = Math.round(player.shotDamage);
         hudSpeed.textContent = Math.round(player.speed);
+
+        // Lógica da barra de progresso do chefe
+        if (bossProgressBar) {
+            const progressContainer = bossProgressBar.parentElement;
+            if (gameState.bossActive) {
+                bossProgressBar.style.width = '100%';
+                progressContainer.classList.add('active-boss');
+            } else {
+                progressContainer.classList.remove('active-boss');
+                let bossProgress = 0;
+                if (gameState.killsNeededForNextBoss > 0) {
+                    bossProgress = (gameState.killsSinceBoss / gameState.killsNeededForNextBoss) * 100;
+                }
+                bossProgressBar.style.width = `${Math.min(bossProgress, 100)}%`;
+            }
+        }
     }
 
     function updateHudColor() {
@@ -1021,37 +1044,87 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
     }
 
-    function saveScore() {
-        const scoreData = {
-            name: gameState.playerName,
-            score: gameState.score,
-            level: gameState.level,
-            bosses: gameState.bossesDefeated,
-            hasInsignia: gameState.bossesDefeated >= 5,
-            time: formatTime(gameState.elapsedTime),
-            kills: gameState.killCounts,
-            powerups: Object.values(gameState.powerupsCollected).reduce((a, b) => a + b, 0)
-        };
-        const rankings = JSON.parse(localStorage.getItem('gameRankings')) || [];
+		// VERSÃO CORRIGIDA E MAIS SEGURA da função saveScore
+async function saveScore() {
+    const scoreData = {
+        name: gameState.playerName,
+        score: gameState.score,
+        level: gameState.level,
+        bosses: gameState.bossesDefeated,
+        hasInsignia: gameState.bossesDefeated >= 5,
+        time: formatTime(gameState.elapsedTime),
+        kills: gameState.killCounts,
+        powerups: Object.values(gameState.powerupsCollected).reduce((a, b) => a + b, 0)
+    };
+
+    try {
+        // VERSÃO CORRIGIDA
+		const res = await fetch(`${JSONBIN_URL}/latest`, {
+		cache: 'no-cache', // Adiciona esta linha para ignorar o cache do navegador
+		headers: {
+        'X-Master-Key': API_KEY
+		}
+	});
+        if (!res.ok) throw new Error('Não foi possível ler o ranking para salvar.');
+        
+        const serverData = await res.json();
+        const rankings = serverData.record || []; // Pega o array de 'record'
+
+        // 2. Adiciona a nova pontuação, ordena e limita a 100
         rankings.push(scoreData);
         rankings.sort((a, b) => b.score - a.score);
-        if (rankings.length > 10) rankings.length = 10;
-        localStorage.setItem('gameRankings', JSON.stringify(rankings));
-    }
+        const top100 = rankings.slice(0, 100);
 
-    function displayRanking() {
-        gameOverScreen.classList.remove('active');
-        rankingScreen.classList.add('active');
-        const rankings = JSON.parse(localStorage.getItem('gameRankings')) || [];
-        const tableBody = document.getElementById('ranking-table').querySelector('tbody');
+        // 3. Envia o ranking atualizado de volta para o servidor
+        await fetch(JSONBIN_URL, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Master-Key': API_KEY
+            },
+            body: JSON.stringify(top100)
+        });
+
+    } catch (error) {
+        console.error('Erro ao salvar pontuação online:', error);
+        // Fallback: Salvar localmente se a API falhar
+        const localRankings = JSON.parse(localStorage.getItem('gameRankings_fallback')) || [];
+        localRankings.push(scoreData);
+        localRankings.sort((a, b) => b.score - a.score);
+        localStorage.setItem('gameRankings_fallback', JSON.stringify(localRankings.slice(0, 100)));
+        alert('Não foi possível salvar o ranking online. Sua pontuação foi salva localmente.');
+    }
+}
+
+// VERSÃO CORRIGIDA E MAIS SEGURA da função displayRanking
+async function displayRanking() {
+    gameOverScreen.classList.remove('active');
+    rankingScreen.classList.add('active');
+    const tableBody = document.getElementById('ranking-table').querySelector('tbody');
+    tableBody.innerHTML = `<tr><td colspan="8">Carregando ranking...</td></tr>`;
+
+    try {
+        // VERSÃO CORRIGIDA
+		const res = await fetch(`${JSONBIN_URL}/latest`, {
+		cache: 'no-cache', // Adiciona esta linha para ignorar o cache do navegador
+		headers: {
+        'X-Master-Key': API_KEY
+		}
+	});
+        if (!res.ok) throw new Error('Não foi possível carregar o ranking.');
+
+        const serverData = await res.json();
+        const rankings = serverData.record || []; // Pega o array de 'record'
+
         tableBody.innerHTML = '';
-        if (rankings.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="8">Nenhum recorde ainda.</td></tr>`;
+        if (!rankings || rankings.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="8">Nenhum recorde ainda. Seja o primeiro!</td></tr>`;
             return;
         }
+
         rankings.forEach((entry, index) => {
             const row = document.createElement('tr');
-            const killString = `A:${entry.kills.ap + entry.kills.ah} I:${entry.kills.ip + entry.kills.ih} J:${entry.kills.jp || 0}`;
+            const killString = `A:${(entry.kills.ap || 0) + (entry.kills.ah || 0)} I:${(entry.kills.ip || 0) + (entry.kills.ih || 0)} J:${entry.kills.jp || 0}`;
             let nameCellHTML = entry.name;
             if (entry.hasInsignia) {
                 nameCellHTML += ` <img src="assets/insigniaBrasil.png" class="insignia" title="Elite: 5+ Chefes Derrotados">`;
@@ -1059,7 +1132,12 @@ document.addEventListener('DOMContentLoaded', () => {
             row.innerHTML = `<td>${index + 1}</td><td>${nameCellHTML}</td><td>${entry.score}</td><td>${entry.level}</td><td>${entry.bosses || 0}</td><td>${entry.time}</td><td>${killString}</td><td>${entry.powerups}</td>`;
             tableBody.appendChild(row);
         });
+
+    } catch (error) {
+        tableBody.innerHTML = `<tr><td colspan="8">Não foi possível carregar o ranking online.</td></tr>`;
+        console.error('Erro ao buscar ranking:', error);
     }
+}
 
     // --- EVENT LISTENERS ---
     startGameBtn.addEventListener('click', startGame);
@@ -1081,12 +1159,27 @@ document.addEventListener('DOMContentLoaded', () => {
         rankingScreen.classList.remove('active');
         gameOverScreen.classList.add('active');
     });
-    resetRankingBtn.addEventListener('click', () => {
-        if (confirm('Tem certeza que deseja apagar todos os recordes? Esta ação não pode ser desfeita.')) {
-            localStorage.removeItem('gameRankings');
-            displayRanking();
+    
+    resetRankingBtn.addEventListener('click', async () => {
+        if (confirm('Tem certeza que deseja apagar TODOS os recordes online? Esta ação não pode ser desfeita e afetará todos os jogadores.')) {
+            try {
+                // Envia um array vazio para limpar o ranking
+                await fetch(JSONBIN_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': API_KEY
+                    },
+                    body: JSON.stringify([])
+                });
+                displayRanking(); // Atualiza a tela
+            } catch (error) {
+                console.error("Erro ao zerar o ranking:", error);
+                alert("Não foi possível zerar o ranking online.");
+            }
         }
     });
+
     exportRankingBtn.addEventListener('click', () => {
         const rankingScreenElement = document.getElementById('ranking-screen');
         const rankingContainer = document.getElementById('ranking-table-container');
