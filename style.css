@@ -237,3 +237,44 @@ button.danger:hover {
     vertical-align: middle; /* Alinha a imagem com o texto do nome */
     margin-left: 8px;
 }
+
+/* Estilos para a Barra de Progresso do Chefe */
+#boss-progress-section {
+    width: 100%; /* A seção agora ocupa a largura da coluna em que está. */
+    margin-top: 3px; /* Adiciona um espaço acima da barra, separando-a do "Tempo de Jogo". */
+}
+
+#boss-progress-container {
+    width: 100%;
+    max-width: 180px;
+    height: 12px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--accent-color);
+    border-radius: 2px;
+    margin-top: 5px;
+}
+
+#boss-progress-bar {
+    width: 0%; /* Começa vazia */
+    height: 100%;
+    background-color: var(--danger-color); /* Cor de perigo/alerta */
+    border-radius: 1px;
+    transition: width 0.3s ease-in-out; /* Animação suave de preenchimento */
+}
+
+/* Animação de pulsação para quando o chefe está ativo */
+#boss-progress-container.active-boss #boss-progress-bar {
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 5px var(--danger-color);
+    }
+    50% {
+        box-shadow: 0 0 15px var(--danger-color);
+    }
+    100% {
+        box-shadow: 0 0 5px var(--danger-color);
+    }
+}
