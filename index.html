@@ -9,14 +9,14 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<body>
 <div id="app">
-    <div id="stage">
-        <canvas id="game"></canvas>
-
-        <!-- ================= HUD ================= -->
-        <div id="hud" class="hidden">
-            <div class="hud-top">
-                <div class="hud-block hud-left">
+    <div id="stage" class="wide">
+        <!-- ======== PAINEL A (esquerda no PC / topo no celular) ======== -->
+        <aside id="panel-a" class="side-panel">
+            <div class="panel-brand"><img src="assets/opt/insigniaBrasil.png" alt=""><span>GUERRA<br>NOS CÉUS</span></div>
+            <div class="hud-content">
+                <div class="hud-block">
                     <div class="hud-callsign" id="hud-name">PILOTO</div>
                     <div class="hud-score" id="hud-score">0</div>
                     <div class="hud-combo" id="hud-combo-wrap">
@@ -24,7 +24,10 @@
                         <div class="combo-bar"><div id="hud-combo"></div></div>
                     </div>
                 </div>
-                <div class="hud-center">
+                <div class="hud-block">
+                    <div class="hud-stage" id="hud-stage">FASE 1</div>
+                    <div class="hud-stage-name" id="hud-stage-name">—</div>
+                    <div class="hud-time" id="hud-time">00:00</div>
                     <div id="hud-progress-wrap">
                         <div class="hud-label">ALVO <span id="hud-boss-name-small"></span></div>
                         <div class="bar thin"><div id="hud-progress"></div></div>
@@ -34,43 +37,19 @@
                         <div class="bar boss"><div id="hud-boss-ghost"></div><div id="hud-boss"></div></div>
                     </div>
                 </div>
-                <div class="hud-block hud-right">
-                    <div class="hud-stage" id="hud-stage">FASE 1</div>
-                    <div class="hud-stage-name" id="hud-stage-name">—</div>
-                    <div class="hud-time" id="hud-time">00:00</div>
-                </div>
+                <div id="radio" class="radio"><span class="radio-who" id="radio-who">RÁDIO</span><span id="radio-text">Canal aberto.</span></div>
             </div>
+        </aside>
 
-            <div id="radio" class="radio"><span class="radio-who" id="radio-who"></span><span id="radio-text"></span></div>
-
-            <div class="hud-bottom">
-                <div class="hud-block hud-health">
-                    <div class="hud-label">BLINDAGEM <span id="hud-hp-text">100/100</span></div>
-                    <div class="bar hp"><div id="hud-hp-ghost"></div><div id="hud-hp"></div><div id="hud-shield"></div></div>
-                    <div class="hud-model" id="hud-model">T-27 TUCANO</div>
-                    <div class="hud-weapons">
-                        <div class="wpn"><span>CANHÃO</span><b id="lv-cannon">1</b><div class="xp"><div id="xp-cannon"></div></div></div>
-                        <div class="wpn"><span>MOTOR</span><b id="lv-engine">1</b><div class="xp eng"><div id="xp-engine"></div></div></div>
-                        <div class="wpn"><span>MÍSSIL</span><b id="lv-missile">0</b><div class="xp mis"><div id="xp-missile"></div></div></div>
-                    </div>
-                </div>
-                <div class="hud-block hud-specials">
-                    <div class="hud-label">BOMBAS <span class="key">X</span></div>
-                    <div id="hud-bombs" class="bombs"></div>
-                    <div class="hud-label">ROLAGEM <span class="key">C</span></div>
-                    <div class="bar thin"><div id="hud-roll"></div></div>
-                    <div class="hud-label">FÚRIA</div>
-                    <div class="bar thin fury"><div id="hud-fury"></div></div>
-                </div>
-            </div>
-
-            <div id="touch-controls">
+        <!-- ======== ÁREA DE JOGO ======== -->
+        <div id="game-wrap">
+            <canvas id="game"></canvas>
+            <div id="boss-strip" class="hidden"><div id="boss-strip-fill"></div></div>
+            <div id="touch-controls" class="hud-content">
                 <button class="touch-btn" id="touch-bomb">BOMBA</button>
                 <button class="touch-btn" id="touch-roll">ROLAR</button>
                 <button class="touch-btn small" id="touch-pause">II</button>
             </div>
-        </div>
-
         <!-- ================= TELAS ================= -->
         <div id="screen-loading" class="screen active">
             <h1 class="title">GUERRA NOS CÉUS</h1>
@@ -103,6 +82,7 @@
                 <summary>Controles</summary>
                 <div class="controls-grid">
                     <span class="key">Setas / WASD</span><span>Mover</span>
+                    <span class="key">Mouse</span><span>O avião segue o cursor · botão esquerdo atira · direito solta bomba · rodinha rola</span>
                     <span class="key">Espaço / J</span><span>Atirar (segurar)</span>
                     <span class="key">Shift</span><span>Voo de precisão (mostra a hitbox, tiro concentrado)</span>
                     <span class="key">X / K</span><span>Bomba — ataque aéreo que limpa projéteis</span>
@@ -184,22 +164,49 @@
 
         <div id="screen-ranking" class="screen">
             <h2 class="title-sm">TOP COMBATENTES</h2>
-            <div class="seg small" id="rank-tabs">
-                <button data-src="online" class="on">Online</button>
-                <button data-src="local">Neste dispositivo</button>
+            <div class="seg rank-tabs" id="rank-tabs">
+                <button data-diff="recruta">Recruta</button>
+                <button data-diff="veterano" class="on">Veterano</button>
+                <button data-diff="as">Ás</button>
             </div>
+            <div class="rank-mine" id="rank-mine"></div>
             <div id="ranking-table-container">
                 <table id="ranking-table">
-                    <thead><tr><th>#</th><th>Nome</th><th>Pontos</th><th>Alcance</th><th>Chefes</th><th>Tempo</th><th>Dif.</th><th>Abates</th></tr></thead>
+                    <thead><tr><th>#</th><th>Nome</th><th>Pontos</th><th>Alcance</th><th>Chefes</th><th>Tempo</th><th>Abates</th><th>Data</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
             <div class="row">
                 <button class="btn" id="btn-export">Exportar PNG</button>
-                <button class="btn danger" id="btn-reset-ranking">Zerar ranking</button>
+                <button class="btn danger" id="btn-reset-ranking">Zerar este ranking</button>
                 <button class="btn primary" id="btn-ranking-back">Voltar</button>
             </div>
         </div>
+        </div>
+
+        <!-- ======== PAINEL B (direita no PC / base no celular) ======== -->
+        <aside id="panel-b" class="side-panel">
+            <div class="hud-content">
+                <div class="hud-block hud-health">
+                    <div class="hud-label">BLINDAGEM <span id="hud-hp-text">100/100</span></div>
+                    <div class="bar hp"><div id="hud-hp-ghost"></div><div id="hud-hp"></div><div id="hud-shield"></div></div>
+                    <div class="hud-model" id="hud-model">T-27 TUCANO</div>
+                    <div class="hud-weapons">
+                        <div class="wpn"><span>CANHÃO</span><b id="lv-cannon">1</b><div class="xp"><div id="xp-cannon"></div></div></div>
+                        <div class="wpn"><span>MOTOR</span><b id="lv-engine">1</b><div class="xp eng"><div id="xp-engine"></div></div></div>
+                        <div class="wpn"><span>MÍSSIL</span><b id="lv-missile">0</b><div class="xp mis"><div id="xp-missile"></div></div></div>
+                    </div>
+                </div>
+                <div class="hud-block hud-specials">
+                    <div class="hud-label">BOMBAS <span class="key">X</span></div>
+                    <div id="hud-bombs" class="bombs"></div>
+                    <div class="hud-label">ROLAGEM <span class="key">C</span></div>
+                    <div class="bar thin"><div id="hud-roll"></div></div>
+                    <div class="hud-label">FÚRIA <span id="hud-grazes" class="muted"></span></div>
+                    <div class="bar thin fury"><div id="hud-fury"></div></div>
+                </div>
+            </div>
+        </aside>
     </div>
 </div>
 

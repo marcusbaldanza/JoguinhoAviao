@@ -4,6 +4,7 @@
 const Input = {
     keys: {},
     pressed: {},     // teclas apertadas neste quadro (borda de subida)
+    mouse: { active: false, x: W / 2, y: H - 150, down: false, lastMoveX: 0, lastMoveY: 0 },
     touch: { active: false, id: null, lastX: 0, lastY: 0, dx: 0, dy: 0, used: false },
     pad: { x: 0, y: 0, fire: false, bomb: false, roll: false, focus: false, pause: false, _prev: {} },
     actionsPressed: new Set(),
@@ -17,6 +18,8 @@ const Input = {
     init(canvas) {
         window.addEventListener('keydown', (e) => {
             if (e.target && e.target.tagName === 'INPUT') return;
+            // usar as setas/WASD devolve o controle ao teclado
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) this.setMouseMode(false);
             if (!this.keys[e.code]) this.pressed[e.code] = true;
             this.keys[e.code] = true;
             if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
@@ -29,6 +32,31 @@ const Input = {
             const r = canvas.getBoundingClientRect();
             return { x: (t.clientX - r.left) * (W / r.width), y: (t.clientY - r.top) * (H / r.height) };
         };
+        // Mouse (PC): o avião segue o cursor; esquerdo atira, direito bomba, rodinha rola
+        const m = this.mouse;
+        const toLogicalM = (e) => {
+            const r = canvas.getBoundingClientRect();
+            return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
+        };
+        canvas.addEventListener('mousemove', (e) => {
+            const p = toLogicalM(e);
+            m.x = p.x; m.y = p.y;
+            // só ativa com movimento real (evita "roubar" o controle do teclado)
+            if (!m.active && Math.hypot(e.clientX - m.lastMoveX, e.clientY - m.lastMoveY) > 6) this.setMouseMode(true);
+            m.lastMoveX = e.clientX; m.lastMoveY = e.clientY;
+        });
+        canvas.addEventListener('mousedown', (e) => {
+            const p = toLogicalM(e); m.x = p.x; m.y = p.y;
+            this.setMouseMode(true);
+            if (e.button === 0) m.down = true;
+            if (e.button === 2) this.actionsPressed.add('bomb');
+            if (e.button === 1) { e.preventDefault(); this.actionsPressed.add('roll'); }
+        });
+        window.addEventListener('mouseup', (e) => { if (e.button === 0) m.down = false; });
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        canvas.addEventListener('wheel', (e) => { e.preventDefault(); if (m.active) this.actionsPressed.add('roll'); }, { passive: false });
+        canvas.addEventListener('mouseleave', () => { m.down = false; });
+
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             this.touch.used = true;
@@ -52,6 +80,14 @@ const Input = {
         canvas.addEventListener('touchcancel', end);
     },
 
+    setMouseMode(on) {
+        if (this.mouse.active === on) return;
+        this.mouse.active = on;
+        if (!on) this.mouse.down = false;
+        const st = document.getElementById('stage');
+        if (st) st.classList.toggle('mouse-play', on);
+    },
+
     /** botões na tela (mobile) */
     bindTouchButton(el, action) {
         el.addEventListener('touchstart', (e) => { e.preventDefault(); this.actionsPressed.add(action); }, { passive: false });
@@ -60,6 +96,7 @@ const Input = {
 
     down(action) {
         if (this.MAP[action].some((k) => this.keys[k])) return true;
+        if (action === 'fire' && this.mouse.active && this.mouse.down) return true;
         return !!this.pad[action];
     },
     hit(action) {

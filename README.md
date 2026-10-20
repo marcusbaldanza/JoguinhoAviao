@@ -7,7 +7,7 @@ A versão anterior (`index.html`, `script.js`, `style.css`) está guardada em `_
 ## Estrutura
 
 ```
-index.html          telas + HUD
+index.html          telas + HUD (painéis fora da área de jogo: laterais no PC, topo/base no celular)
 css/style.css       visual da interface
 js/config.js        TODOS os números de balanceamento, fases, história, chefes e perks
 js/utils.js         matemática e helpers
@@ -24,7 +24,7 @@ js/bosses.js        chefes, padrões de ataque, partes destrutíveis
 js/powerups.js      power-ups com sorteio adaptativo
 js/stages.js        diretor de fase (ondas, mini-chefe, rádio, holofotes)
 js/hud.js / ui.js   HUD e telas
-js/ranking.js       ranking online (JSONBin) + local
+js/ranking.js       ranking online (JSONBin), um placar por dificuldade
 js/game.js          estado, laço principal, colisões e renderização em camadas
 assets/opt/         imagens otimizadas (~2 MB no total, antes ~26 MB)
 ```

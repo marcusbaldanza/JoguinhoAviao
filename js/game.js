@@ -178,13 +178,14 @@ const G = {
         this.eBullets.length = 0;
         const [who, line] = boss.def.outro;
         this.radio(who, line);
-        if (this.stageIndex === STAGES.length - 1) this.after(2.2, () => this.radio('CRUZEIRO', 'A TRÍADE caiu, {P}! A flotilha está atracando!'));
+        if (this.stageIndex === STAGES.length - 1) this.after(2.2, () => this.radio(STAGES[STAGES.length - 1].radio.slice(-1)[0][1], 'A TRÍADE caiu, {P}! A flotilha está atracando!'));
         Sound.jingle('clear');
         this.after(3.2, () => this.stageClear());
     },
 
     stageClear() {
         const st = this.stage, p = this.player;
+        this.campWarned = false;
         this.state = 'clear';
         HUD.show(false);
         const bossBonus = 3000 * (this.stageIndex + 1);
@@ -324,9 +325,9 @@ const G = {
         this.saved = true;
         const entry = {
             name: report.name, score: report.score, stage: report.stage, level: this.stageIndex + 1 + this.loop * 5,
-            bosses: st.bosses, hasInsignia: st.bosses >= 5, time: report.time, difficulty: report.difficulty,
+            bosses: st.bosses, hasInsignia: st.bosses >= 5, time: report.time, difficulty: report.difficulty, diffKey: this.difficulty,
             kills: st.kills, totalKills: st.totalKills,
-            powerups: Object.values(st.powerups).reduce((a, b) => a + b, 0), date: new Date().toISOString().slice(0, 10)
+            powerups: Object.values(st.powerups).reduce((a, b) => a + b, 0), date: new Date().toLocaleDateString('pt-BR')
         };
         if (this.score > 0) Ranking.save(entry).then((ok) => UI.setSaveStatus(ok));
         else UI.setSaveStatus(false);
@@ -346,6 +347,7 @@ const G = {
         this.computeMod();
         this.stage.update(dt);
         p.update(dt);
+        this.antiCamp(dt);
         for (const e of this.enemies) e.update(dt);
         this.enemies = this.enemies.filter((e) => !e.dead);
         if (this.boss) { this.boss.update(dt); if (this.boss.state === 'dead') this.boss = null; }
@@ -362,6 +364,27 @@ const G = {
         if (p.dead && p.deathT > 3 && this.state === 'playing') this.gameOver();
         if (this.bannerData) { this.bannerData.t += dt; if (this.bannerData.t > this.bannerData.dur) this.bannerData = null; }
         if (this.warning) { this.warning.t += dt; if (this.warning.t > this.warning.dur) this.warning = null; }
+    },
+
+    /** quem fica parado num canto atrai drones de flanco (evita o "macete" de acampar) */
+    antiCamp(dt) {
+        const p = this.player, st = this.stage;
+        if (p.dead || st.phase === 'intro') return;
+        const corner = p.x < 130 || p.x > W - 130;
+        if (this.campX === undefined || !corner || Math.hypot(p.x - this.campX, p.y - this.campY) > 100) {
+            this.campT = 0; this.campX = p.x; this.campY = p.y; return;
+        }
+        this.campT += dt;
+        if (this.campT < 4) return;
+        this.campT = 1.5; // repete a cada 2,5 s enquanto continuar acampado
+        const side = p.x < W / 2 ? -1 : 1;
+        const n = 2 + Math.min(3, Math.floor(this.progress / 2));
+        for (let i = 0; i < n; i++) st.later(i * 0.25, () => {
+            const e = spawnEnemy('dr', side < 0 ? -30 : W + 30, clamp(p.y - 260 + i * 60, 60, H - 200));
+            e.vx = -side * 260; e.vy = 40;
+        });
+        st.later(0.4, () => spawnEnemy('ap', clamp(p.x + side * -40, 40, W - 40), -60));
+        if (!this.campWarned) { this.campWarned = true; this.radio('RADAR', 'Alvo parado no canto detectado — drones de flanco a caminho! Mexa-se!'); }
     },
 
     /** cenário sempre animado (também atrás das telas de menu/briefing) */
@@ -610,18 +633,20 @@ const G = {
     let renderScale = 1;
 
     function resize() {
-        const s = Math.min(window.innerWidth / W, window.innerHeight / H);
+        // escolhe o layout que deixa a área de jogo maior: painéis nas laterais (PC) ou em cima/embaixo (celular)
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const sWide = Math.min(vw / 1120, vh / 960), sTall = Math.min(vw / 720, vh / 1240);
+        const wide = sWide >= sTall;
+        stageEl.classList.toggle('wide', wide);
+        stageEl.classList.toggle('tall', !wide);
+        const s = wide ? sWide : sTall;
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         stageEl.style.transform = `scale(${s}) translate(-50%, -50%)`;
-        stageEl.style.transformOrigin = '0 0';
-        stageEl.style.left = '50%'; stageEl.style.top = '50%';
         // backing store na resolução real da tela (nitidez em telas grandes/retina)
         renderScale = Math.max(0.5, s * dpr);
         canvas.width = Math.round(W * renderScale);
         canvas.height = Math.round(H * renderScale);
     }
-    // o translate(-50%) dentro do scale: posiciona pelo centro
-    stageEl.style.transformOrigin = '0 0';
     window.addEventListener('resize', resize);
     resize();
 

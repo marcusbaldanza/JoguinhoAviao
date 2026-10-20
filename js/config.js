@@ -22,7 +22,7 @@ const RANKING_CONFIG = {
 // --- DIFICULDADE -------------------------------------------------------
 // density = volume de inimigos; elite = chance base de inimigo "veterano" (mais forte)
 const DIFFICULTY = {
-    recruta:  { label: 'Recruta',  dmgTaken: 0.6,  enemyHp: 0.85, bulletSpeed: 0.88, fireRate: 0.8,  density: 0.85, elite: 0.0,  score: 0.75, bombs: 3 },
+    recruta:  { label: 'Recruta',  dmgTaken: 0.6,  enemyHp: 0.85, bulletSpeed: 0.88, fireRate: 0.8,  density: 0.85, elite: 0.0,  score: 0.3, bombs: 3 },
     veterano: { label: 'Veterano', dmgTaken: 0.9,  enemyHp: 1.0,  bulletSpeed: 1.0,  fireRate: 1.0,  density: 1.0,  elite: 0.03, score: 1.0,  bombs: 2 },
     as:       { label: 'Ás',       dmgTaken: 1.25, enemyHp: 1.25, bulletSpeed: 1.12, fireRate: 1.25, density: 1.2,  elite: 0.1,  score: 1.7,  bombs: 1 }
 };
@@ -66,19 +66,19 @@ const GEAR_XP = 12, GEAR_DROP = 0.3;  // a chance de peça cai quando a densidad
 
 // Canhão — 12 níveis (1 por modelo de avião). guns: [deslocamento x, ângulo°]; pierce = atravessa inimigos
 const CANNON_LEVELS = [
-    null,
+    null, // abertura máxima ±7°: o poder cresce pela FRENTE (mais canos, dano, perfuração), não pelos lados
     { rate: 7,    dmg: 9,  w: 3.5, guns: [[0, 0]] },
     { rate: 7.5,  dmg: 9,  w: 3.8, guns: [[-7, 0], [7, 0]] },
     { rate: 8,    dmg: 10, w: 4,   guns: [[-9, 0], [0, 0], [9, 0]] },
     { rate: 8.5,  dmg: 10, w: 4.2, guns: [[-11, -1], [-4, 0], [4, 0], [11, 1]] },
-    { rate: 9,    dmg: 11, w: 4.5, guns: [[-14, -4], [-6, 0], [0, 0], [6, 0], [14, 4]] },
-    { rate: 9.5,  dmg: 12, w: 4.8, guns: [[-16, -6], [-7, -1], [0, 0], [7, 1], [16, 6]], pierce: 1 },
-    { rate: 10,   dmg: 12, w: 5,   guns: [[-20, -8], [-12, -2], [-4, 0], [4, 0], [12, 2], [20, 8]], pierce: 1 },
-    { rate: 10.5, dmg: 13, w: 5.2, guns: [[-22, -10], [-13, -3], [-5, 0], [5, 0], [13, 3], [22, 10]], pierce: 1 },
-    { rate: 11,   dmg: 14, w: 5.5, guns: [[-24, -12], [-15, -5], [-6, -1], [0, 0], [6, 1], [15, 5], [24, 12]], pierce: 2 },
-    { rate: 11.5, dmg: 15, w: 5.8, guns: [[-26, -14], [-16, -6], [-7, -1], [0, 0], [7, 1], [16, 6], [26, 14]], pierce: 2 },
-    { rate: 12,   dmg: 16, w: 6,   guns: [[-30, -22], [-24, -12], [-15, -5], [-6, -1], [6, 1], [15, 5], [24, 12], [30, 22]], pierce: 2 },
-    { rate: 13,   dmg: 17, w: 6.5, guns: [[-32, -26], [-24, -14], [-15, -6], [-6, -1], [0, 0], [6, 1], [15, 6], [24, 14], [32, 26]], pierce: 3 }
+    { rate: 9,    dmg: 11, w: 4.5, guns: [[-14, -2], [-6, 0], [0, 0], [6, 0], [14, 2]] },
+    { rate: 9.5,  dmg: 12, w: 4.8, guns: [[-16, -3], [-7, -1], [0, 0], [7, 1], [16, 3]], pierce: 1 },
+    { rate: 10,   dmg: 13, w: 5,   guns: [[-18, -3], [-11, -1], [-4, 0], [4, 0], [11, 1], [18, 3]], pierce: 1 },
+    { rate: 10.5, dmg: 14, w: 5.2, guns: [[-20, -4], [-12, -1], [-4, 0], [4, 0], [12, 1], [20, 4]], pierce: 1 },
+    { rate: 11,   dmg: 15, w: 5.5, guns: [[-22, -4], [-14, -2], [-7, 0], [0, 0], [7, 0], [14, 2], [22, 4]], pierce: 2 },
+    { rate: 11.5, dmg: 16, w: 5.8, guns: [[-24, -5], [-15, -2], [-7, 0], [0, 0], [7, 0], [15, 2], [24, 5]], pierce: 2 },
+    { rate: 12,   dmg: 17, w: 6,   guns: [[-26, -6], [-18, -3], [-10, -1], [-3, 0], [3, 0], [10, 1], [18, 3], [26, 6]], pierce: 2 },
+    { rate: 13,   dmg: 18, w: 6.5, guns: [[-28, -7], [-20, -4], [-12, -1], [-5, 0], [0, 0], [5, 0], [12, 1], [20, 4], [28, 7]], pierce: 3 }
 ];
 // Motor — 8 níveis: velocidade, recarga da rolagem, cor/tamanho do pós-combustor e propulsores extras
 const ENGINE_LEVELS = [

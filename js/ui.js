@@ -20,9 +20,9 @@ const UI = {
 
     init() {
         const diffDesc = {
-            recruta: 'Menos dano recebido, inimigos mais fracos, 3 bombas. Pontuação x0.75',
+            recruta: 'Menos dano recebido, inimigos mais fracos, 3 bombas. Pontuação x0.3',
             veterano: 'A experiência equilibrada. 2 bombas. Pontuação x1.0',
-            as: 'Inimigos agressivos e resistentes, 1 bomba. Pontuação x1.6'
+            as: 'Inimigos agressivos e resistentes, 1 bomba. Pontuação x1.7'
         };
         const setDiff = (d) => {
             G.difficulty = d;
@@ -53,7 +53,7 @@ const UI = {
         this.$('btn-export').addEventListener('click', () => this.exportRanking());
         this.$('btn-reset-ranking').addEventListener('click', () => this.resetRanking());
         if (!RANKING_CONFIG.allowReset) this.$('btn-reset-ranking').classList.add('hidden');
-        document.querySelectorAll('#rank-tabs button').forEach((b) => b.addEventListener('click', () => this.loadRanking(b.dataset.src)));
+        document.querySelectorAll('#rank-tabs button').forEach((b) => b.addEventListener('click', () => { Sound.ui(); this.loadRanking(b.dataset.diff, true); }));
 
         // configurações
         const s = G.settings;
@@ -164,7 +164,7 @@ const UI = {
     },
     setSaveStatus(ok) {
         const el = this.$('go-save-status');
-        if (el) el.textContent = ok ? 'Pontuação registrada no ranking online.' : 'Ranking online indisponível — salvo neste dispositivo.';
+        if (el) el.textContent = ok ? `Pontuação registrada no ranking do nível ${DIFFICULTY[G.difficulty].label}.` : 'Sem conexão com o ranking — a pontuação será enviada na próxima partida.';
     },
 
     victory(lines) {
@@ -190,20 +190,35 @@ const UI = {
     openRanking(from) {
         Sound.init(); Sound.ui();
         this.rankingReturn = from;
+        if (!G.playerName) G.playerName = this.$('player-name').value.trim();
         this.show('screen-ranking');
-        this.loadRanking('online');
+        this.loadRanking(G.difficulty, false);
     },
-    async loadRanking(src) {
-        document.querySelectorAll('#rank-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.src === src));
+    /** um placar por dificuldade; "cached" reaproveita o que já foi baixado ao trocar de aba */
+    async loadRanking(diff, cached) {
+        this.rankDiff = diff;
+        document.querySelectorAll('#rank-tabs button').forEach((b) => b.classList.toggle('on', b.dataset.diff === diff));
         const tbody = this.$('ranking-table').querySelector('tbody');
-        if (src === 'local') { Ranking.render(Ranking.getLocal(), tbody); return; }
-        tbody.innerHTML = '<tr><td colspan="8">Carregando ranking...</td></tr>';
-        try { Ranking.render(await Ranking.fetchOnline(), tbody); }
-        catch { tbody.innerHTML = '<tr><td colspan="8">Não foi possível carregar o ranking online. Veja a aba "Neste dispositivo".</td></tr>'; }
+        const mine = this.$('rank-mine');
+        const label = DIFFICULTY[diff].label;
+        try {
+            if (!cached || !Ranking.boards) { tbody.innerHTML = '<tr><td colspan="8">Carregando ranking...</td></tr>'; mine.textContent = ''; await Ranking.fetchAll(); }
+            if (this.rankDiff !== diff) return;
+            const list = Ranking.boards[diff];
+            Ranking.render(list, tbody, G.playerName);
+            const b = Ranking.best(list, G.playerName);
+            mine.innerHTML = !G.playerName ? `Ranking do nível <b>${escapeHTML(label)}</b>`
+                : b ? `Seu melhor no nível ${escapeHTML(label)}: <b>#${b.pos}</b> com <b>${formatScore(b.entry.score)}</b> pontos`
+                : `Você ainda não está no ranking do nível ${escapeHTML(label)}.`;
+        } catch {
+            tbody.innerHTML = '<tr><td colspan="8">Não foi possível carregar o ranking online. Verifique a conexão.</td></tr>';
+            mine.textContent = '';
+        }
     },
     async resetRanking() {
-        if (!confirm('Apagar TODOS os recordes online? Isso afeta todos os jogadores e não pode ser desfeito.')) return;
-        try { await Ranking.reset(); this.loadRanking('online'); } catch { alert('Não foi possível zerar o ranking online.'); }
+        const diff = this.rankDiff || G.difficulty;
+        if (!confirm(`Apagar TODOS os recordes do nível ${DIFFICULTY[diff].label}? Isso afeta todos os jogadores e não pode ser desfeito.`)) return;
+        try { await Ranking.resetBoard(diff); this.loadRanking(diff, true); } catch { alert('Não foi possível zerar o ranking online.'); }
     },
     exportRanking() {
         if (typeof html2canvas === 'undefined') { alert('Exportação indisponível (sem conexão com a biblioteca html2canvas).'); return; }

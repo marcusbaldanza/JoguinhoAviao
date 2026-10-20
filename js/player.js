@@ -137,7 +137,14 @@ class Player {
         this.focus = Input.down('focus');
         const ax = Input.axis();
         const speed = this.maxSpeed * (this.focus ? PLAYER_CFG.focusFactor : 1) * (this.rollT > 0 ? 1.5 : 1);
-        const tvx = ax.x * speed, tvy = ax.y * speed;
+        let tvx = ax.x * speed, tvy = ax.y * speed;
+        const mouse = Input.mouse;
+        if (mouse.active && !ax.x && !ax.y) {
+            // mouse: voa até o cursor respeitando a velocidade do motor (sem teletransporte)
+            const dx = mouse.x - this.x, dy = mouse.y - this.y, d = Math.hypot(dx, dy);
+            if (d > 2) { const sp = Math.min(speed, d * 9); tvx = (dx / d) * sp; tvy = (dy / d) * sp; }
+            else { tvx = 0; tvy = 0; }
+        }
         const acc = PLAYER_CFG.accel * dt * (0.9 + this.engine * 0.05);
         this.vx += clamp(tvx - this.vx, -acc, acc);
         this.vy += clamp(tvy - this.vy, -acc, acc);
