@@ -1,109 +1,226 @@
-
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Guerra nos Céus</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Staatliches&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Staatliches&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<div id="app">
+    <div id="stage">
+        <canvas id="game"></canvas>
 
-    <div id="start-screen" class="screen active">
-        <h1>Guerra nos Céus</h1>
-        <p>Insira seu nome de combatente:</p>
-        <input type="text" id="player-name-input" placeholder="Seu nome..." maxlength="15">
-        <button id="start-game-btn">Iniciar Missão</button>
-    </div>
+        <!-- ================= HUD ================= -->
+        <div id="hud" class="hidden">
+            <div class="hud-top">
+                <div class="hud-block hud-left">
+                    <div class="hud-callsign" id="hud-name">PILOTO</div>
+                    <div class="hud-score" id="hud-score">0</div>
+                    <div class="hud-combo" id="hud-combo-wrap">
+                        <span id="hud-mult">x1.0</span>
+                        <div class="combo-bar"><div id="hud-combo"></div></div>
+                    </div>
+                </div>
+                <div class="hud-center">
+                    <div id="hud-progress-wrap">
+                        <div class="hud-label">ALVO <span id="hud-boss-name-small"></span></div>
+                        <div class="bar thin"><div id="hud-progress"></div></div>
+                    </div>
+                    <div id="hud-boss-wrap" class="hidden">
+                        <div class="hud-label boss" id="hud-boss-name">CHEFE</div>
+                        <div class="bar boss"><div id="hud-boss-ghost"></div><div id="hud-boss"></div></div>
+                    </div>
+                </div>
+                <div class="hud-block hud-right">
+                    <div class="hud-stage" id="hud-stage">FASE 1</div>
+                    <div class="hud-stage-name" id="hud-stage-name">—</div>
+                    <div class="hud-time" id="hud-time">00:00</div>
+                </div>
+            </div>
 
-    <div id="game-container" style="display: none;">
-        <canvas id="game-canvas"></canvas>
-        
-        <div id="hud">
-			<div class="hud-group">
-				<div>Nome: <span id="hud-player-name"></span></div>
-				<div>Pontuação: <span id="hud-score">0</span></div>
-			</div>
+            <div id="radio" class="radio"><span class="radio-who" id="radio-who"></span><span id="radio-text"></span></div>
 
-			<div class="hud-group" id="hud-player-stats">
-				<div>Vida: <span id="hud-health">100 / 100</span></div>
-				<div>Dano: <span id="hud-damage">25</span></div>
-				<div>Velocidade: <span id="hud-speed">300</span></div>
-			</div>
+            <div class="hud-bottom">
+                <div class="hud-block hud-health">
+                    <div class="hud-label">BLINDAGEM <span id="hud-hp-text">100/100</span></div>
+                    <div class="bar hp"><div id="hud-hp-ghost"></div><div id="hud-hp"></div><div id="hud-shield"></div></div>
+                    <div class="hud-model" id="hud-model">T-27 TUCANO</div>
+                    <div class="hud-weapons">
+                        <div class="wpn"><span>CANHÃO</span><b id="lv-cannon">1</b><div class="xp"><div id="xp-cannon"></div></div></div>
+                        <div class="wpn"><span>MOTOR</span><b id="lv-engine">1</b><div class="xp eng"><div id="xp-engine"></div></div></div>
+                        <div class="wpn"><span>MÍSSIL</span><b id="lv-missile">0</b><div class="xp mis"><div id="xp-missile"></div></div></div>
+                    </div>
+                </div>
+                <div class="hud-block hud-specials">
+                    <div class="hud-label">BOMBAS <span class="key">X</span></div>
+                    <div id="hud-bombs" class="bombs"></div>
+                    <div class="hud-label">ROLAGEM <span class="key">C</span></div>
+                    <div class="bar thin"><div id="hud-roll"></div></div>
+                    <div class="hud-label">FÚRIA</div>
+                    <div class="bar thin fury"><div id="hud-fury"></div></div>
+                </div>
+            </div>
 
-			<div class="hud-group">
-				<div id="hud-powerups">
-					<img src="assets/PWvelocidade.png" alt="Velocidade">
-					<span id="hud-feather-level">x0</span>
-					<img src="assets/PWcanhao.png" alt="Canhão">
-					<span id="hud-cannon-level">x0</span>
-				</div>
-		</div>
+            <div id="touch-controls">
+                <button class="touch-btn" id="touch-bomb">BOMBA</button>
+                <button class="touch-btn" id="touch-roll">ROLAR</button>
+                <button class="touch-btn small" id="touch-pause">II</button>
+            </div>
+        </div>
 
-    <div class="hud-group">
-        <div>Nível: <span id="hud-level">1</span></div>
-        <div>Tempo: <span id="hud-time">00:00</span></div>
-		<div class="hud-group" id="boss-progress-section">
-				<div>Próximo Chefe</div>
-				<div id="boss-progress-container">
-					<div id="boss-progress-bar"></div>
-				</div>
-		</div>
+        <!-- ================= TELAS ================= -->
+        <div id="screen-loading" class="screen active">
+            <h1 class="title">GUERRA NOS CÉUS</h1>
+            <div class="loading-bar"><div id="loading-fill"></div></div>
+            <p id="loading-text">Carregando recursos...</p>
+        </div>
+
+        <div id="screen-menu" class="screen">
+            <img src="assets/opt/insigniaBrasil.png" class="menu-insignia" alt="">
+            <h1 class="title">GUERRA NOS CÉUS</h1>
+            <div class="subtitle">OPERAÇÃO CORREDOR</div>
+            <p class="tagline">Um piloto brasileiro. Uma flotilha. Uma aliança que quer apagar povos do mapa.</p>
+            <div class="panel">
+                <label for="player-name">Nome de combatente</label>
+                <input type="text" id="player-name" maxlength="15" placeholder="Seu nome..." autocomplete="off">
+                <label>Dificuldade</label>
+                <div class="seg" id="difficulty">
+                    <button data-d="recruta">Recruta</button>
+                    <button data-d="veterano" class="on">Veterano</button>
+                    <button data-d="as">Ás</button>
+                </div>
+                <div class="diff-desc" id="diff-desc"></div>
+                <button class="btn primary big" id="btn-start">INICIAR MISSÃO</button>
+                <div class="row">
+                    <button class="btn" id="btn-ranking">Ranking</button>
+                    <button class="btn" id="btn-settings">Configurações</button>
+                </div>
+            </div>
+            <details class="controls">
+                <summary>Controles</summary>
+                <div class="controls-grid">
+                    <span class="key">Setas / WASD</span><span>Mover</span>
+                    <span class="key">Espaço / J</span><span>Atirar (segurar)</span>
+                    <span class="key">Shift</span><span>Voo de precisão (mostra a hitbox, tiro concentrado)</span>
+                    <span class="key">X / K</span><span>Bomba — ataque aéreo que limpa projéteis</span>
+                    <span class="key">C / L</span><span>Rolagem evasiva (invencível por instantes)</span>
+                    <span class="key">P / Esc</span><span>Pausar</span>
+                    <span class="key">M</span><span>Som liga/desliga</span>
+                    <span class="key">Toque</span><span>Arraste para mover, tiro automático</span>
+                    <span class="key">Controle</span><span>Analógico, A atira, B bomba, X rola, RB precisão</span>
+                </div>
+                <p class="tip">Dica: passar raspando nos tiros inimigos ("graze") rende pontos e enche a barra de <b>Fúria</b>.</p>
+            </details>
+        </div>
+
+        <div id="screen-briefing" class="screen">
+            <div class="briefing">
+                <div class="brief-head">
+                    <div class="brief-kicker" id="brief-kicker">BRIEFING</div>
+                    <h2 id="brief-title">FASE 1</h2>
+                </div>
+                <div class="brief-text" id="brief-text"></div>
+                <button class="btn primary big" id="btn-launch">DECOLAR</button>
+                <div class="hint">Enter / Espaço para continuar</div>
+            </div>
+        </div>
+
+        <div id="screen-clear" class="screen">
+            <h2 class="title-sm">SETOR LIBERADO</h2>
+            <div class="tally" id="tally"></div>
+            <button class="btn primary big" id="btn-clear-next">CONTINUAR</button>
+        </div>
+
+        <div id="screen-perk" class="screen">
+            <h2 class="title-sm">ESCOLHA UMA MELHORIA</h2>
+            <p class="sub">A equipe de solo tem tempo para uma modificação antes da próxima decolagem.</p>
+            <div class="perks" id="perks"></div>
+            <div class="hint">Clique ou use 1 / 2 / 3</div>
+        </div>
+
+        <div id="screen-pause" class="screen overlay">
+            <h2 class="title-sm">PAUSA</h2>
+            <div class="panel">
+                <button class="btn primary" id="btn-resume">Continuar</button>
+                <button class="btn" id="btn-pause-settings">Configurações</button>
+                <button class="btn danger" id="btn-quit">Abandonar missão</button>
+            </div>
+        </div>
+
+        <div id="screen-settings" class="screen overlay">
+            <h2 class="title-sm">CONFIGURAÇÕES</h2>
+            <div class="panel settings">
+                <label class="toggle"><input type="checkbox" id="set-sound"><span>Efeitos sonoros</span></label>
+                <label class="toggle"><input type="checkbox" id="set-music"><span>Música</span></label>
+                <label class="toggle"><input type="checkbox" id="set-shake"><span>Tremor de tela</span></label>
+                <label class="toggle"><input type="checkbox" id="set-autofire"><span>Tiro automático</span></label>
+                <label class="toggle"><input type="checkbox" id="set-quality"><span>Iluminação dinâmica (alta qualidade)</span></label>
+                <button class="btn primary" id="btn-settings-back">Voltar</button>
+            </div>
+        </div>
+
+        <div id="screen-gameover" class="screen">
+            <h2 class="title-sm danger-text" id="go-title">MISSÃO FRACASSADA</h2>
+            <p class="sub story-line" id="go-story"></p>
+            <div class="report" id="go-report"></div>
+            <div class="row">
+                <button class="btn primary" id="btn-retry">Tentar novamente</button>
+                <button class="btn" id="btn-newpilot">Novo combatente</button>
+                <button class="btn" id="btn-go-ranking">Ranking</button>
+            </div>
+        </div>
+
+        <div id="screen-victory" class="screen">
+            <h2 class="title-sm">MISSÃO CUMPRIDA</h2>
+            <div class="brief-text" id="victory-text"></div>
+            <div class="row">
+                <button class="btn primary" id="btn-loop">Continuar a guerra (Ciclo +1)</button>
+                <button class="btn" id="btn-finish">Encerrar e registrar</button>
+            </div>
+        </div>
+
+        <div id="screen-ranking" class="screen">
+            <h2 class="title-sm">TOP COMBATENTES</h2>
+            <div class="seg small" id="rank-tabs">
+                <button data-src="online" class="on">Online</button>
+                <button data-src="local">Neste dispositivo</button>
+            </div>
+            <div id="ranking-table-container">
+                <table id="ranking-table">
+                    <thead><tr><th>#</th><th>Nome</th><th>Pontos</th><th>Alcance</th><th>Chefes</th><th>Tempo</th><th>Dif.</th><th>Abates</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="row">
+                <button class="btn" id="btn-export">Exportar PNG</button>
+                <button class="btn danger" id="btn-reset-ranking">Zerar ranking</button>
+                <button class="btn primary" id="btn-ranking-back">Voltar</button>
+            </div>
+        </div>
     </div>
 </div>
-    </div>
 
-    <div id="game-over-screen" class="screen">
-        <h2>Missão Fracassada</h2>
-        <div id="final-stats">
-			<p><strong>Combatente:</strong> <span id="final-player-name"></span></p>
-			<p><strong>Pontuação Total:</strong> <span id="final-score"></span></p>
-			<p><strong>Tempo de Sobrevivência:</strong> <span id="final-time"></span></p>
-			<p><strong>Nível Alcançado:</strong> <span id="final-level"></span></p>
-			<p><strong>Chefões Derrotados:</strong> <span id="final-bosses-defeated"></span></p> <h3>Relatório de Abates:</h3>
-			<p>Aviões Americanos: <span id="final-kills-ap"></span></p>
-			<p>Aviões Israelenses: <span id="final-kills-ip"></span></p>
-			<p>Aviões Japoneses: <span id="final-kills-jp"></span></p>
-			<p>Helicópteros Americanos: <span id="final-kills-ah"></span></p>
-			<p>Helicópteros Israelenses: <span id="final-kills-ih"></span></p>
-			<h3>Power-ups Coletados:</h3>
-			<p id="final-powerups"></p>
-		</div>
-        <div class="button-group">
-            <button id="restart-btn">Tentar Novamente</button>
-            <button id="new-player-btn">Novo Combatente</button>
-            <button id="view-ranking-btn">Ver Ranking</button>
-        </div>
-    </div>
-    
-    <div id="ranking-screen" class="screen">
-        <h2>Top 10 Combatentes</h2>
-        <div id="ranking-table-container">
-            <table id="ranking-table">
-				<thead>
-					<tr>
-						<th>Pos.</th>
-						<th>Nome</th>
-						<th>Pontuação</th>
-						<th>Nível</th>
-						<th>Chefes</th> <th>Tempo</th>
-						<th>Abates</th>
-						<th>Power-ups</th>
-					</tr>
-				</thead>
-				<tbody>
-					</tbody>
-			</table>
-        </div>
-        <div class="button-group">
-			<button id="export-ranking-btn">Exportar como PNG</button>
-			<button id="reset-ranking-btn" class="danger">Zerar Ranking</button> 
-			<button id="back-to-game-over-btn">Voltar</button>
-		</div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="script.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/assets.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/music.js"></script>
+<script src="js/input.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/projectiles.js"></script>
+<script src="js/aircraft.js"></script>
+<script src="js/player.js"></script>
+<script src="js/enemies.js"></script>
+<script src="js/bosses.js"></script>
+<script src="js/powerups.js"></script>
+<script src="js/stages.js"></script>
+<script src="js/hud.js"></script>
+<script src="js/ranking.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/game.js"></script>
 </body>
 </html>
