@@ -428,6 +428,151 @@ const AIRCRAFT_MODELS = [
             AC.canopy(c, -62, 13, 36, '#1f60c8');
             AC.roundel(c, 72, 44, 8);
         }
+    },
+    {
+        name: 'Jaguar Supersônico', desc: 'Bimotor de asas canteadas', w: 80,
+        nozzles: [[-11, 97, 8, 'jet'], [11, 97, 8, 'jet']],
+        draw(c) {
+            AC.wing(c, [[18, -20], [100, 34], [96, 52], [18, 50]], '#c48a16');
+            AC.wing(c, [[16, 66], [52, 82], [48, 96], [16, 92]], '#c48a16');
+            AC.fus(c, [[-100, 0.5], [-80, 9], [-50, 16], [-10, 22], [40, 24], [86, 20], [97, 1]], '#c48a16');
+            AC.paintAtop(c, () => { // pintas de onça
+                const r = seeded(13);
+                for (let i = 0; i < 60; i++) { const x = (r() - 0.5) * 200, y = (r() - 0.5) * 190, rr = 2 + r() * 4; c.fillStyle = 'rgba(30,18,6,0.75)'; c.beginPath(); c.arc(x, y, rr, 0, TAU); c.fill(); c.fillStyle = 'rgba(120,70,10,0.6)'; c.beginPath(); c.arc(x, y, rr * 0.45, 0, TAU); c.fill(); }
+                c.fillStyle = BR.green; c.fillRect(-3, -90, 6, 175);
+            });
+            AC.glowLine(c, [[18, -20], [100, 34]], BR.green, 1.6);
+            AC.intake(c, 22, -22, 9, 24);
+            AC.fin(c, 20, 54, 94, 7, '#8a5f0c', 5);
+            AC.canopy(c, -62, 13, 36, '#1f60c8');
+            AC.roundel(c, 66, 30, 8);
+        }
+    },
+    {
+        name: 'Tupã', desc: 'Delta do trovão', w: 82,
+        nozzles: [[-12, 97, 8, 'jet'], [12, 97, 8, 'jet']],
+        draw(c) {
+            AC.wing(c, [[14, -44], [100, 66], [100, 76], [14, 78]], '#dfe8f2');
+            AC.fus(c, [[-100, 0.5], [-76, 9], [-40, 16], [10, 20], [60, 22], [92, 20], [98, 1]], '#dfe8f2');
+            AC.paintAtop(c, () => { c.fillStyle = BR.blue; for (const s of [1, -1]) { c.beginPath(); c.moveTo(s * 40, 20); c.lineTo(s * 96, 70); c.lineTo(s * 40, 74); c.fill(); } });
+            AC.glowLine(c, [[0, -80], [14, -40], [4, -10], [22, 22], [10, 50], [30, 80]], '#9fd8ff', 2.4);
+            AC.glowLine(c, [[50, 30], [62, 46], [56, 56], [74, 70]], '#ffffff', 1.6);
+            AC.fin(c, 0, 40, 98, 7, BR.blueD);
+            AC.canopy(c, -60, 13, 36, '#0d3a8a');
+            AC.roundel(c, 60, 52, 8);
+        }
+    },
+    {
+        name: 'Iara', desc: 'Asa variável — a guardiã das águas', w: 82,
+        nozzles: [[-10, 96, 8, 'jet'], [10, 96, 8, 'jet']],
+        draw(c) {
+            AC.wing(c, [[18, 10], [100, -14], [100, 0], [20, 40]], '#1f8f8a');
+            AC.wing(c, [[14, -52], [44, -38], [44, -30], [14, -34]], '#1f8f8a');
+            AC.wing(c, [[18, 70], [56, 86], [56, 96], [18, 94]], '#1f8f8a');
+            AC.fus(c, [[-100, 0.5], [-80, 9], [-40, 16], [10, 22], [60, 22], [90, 18], [96, 1]], '#1f8f8a');
+            AC.paintAtop(c, () => { // escamas
+                c.strokeStyle = 'rgba(200,255,240,0.25)'; c.lineWidth = 1;
+                for (let y = -80; y < 90; y += 8) for (let x = -24; x < 26; x += 8) { c.beginPath(); c.arc(x + (y / 8 % 2) * 4, y, 4, 0, Math.PI); c.stroke(); }
+            });
+            AC.glowLine(c, [[18, 10], [100, -14]], BR.yellow, 1.6);
+            AC.glowLine(c, [[20, 40], [100, 0]], BR.green, 1.4);
+            AC.fin(c, 18, 56, 94, 6, '#126660', 4);
+            AC.canopy(c, -62, 13, 34, '#c9a020');
+            AC.roundel(c, 72, -2, 7);
+        }
+    },
+    {
+        name: 'Mapinguari', desc: 'Caça pesado trimotor', w: 86,
+        nozzles: [[-18, 96, 9, 'jet'], [0, 99, 9, 'jet'], [18, 96, 9, 'jet']],
+        draw(c) {
+            AC.wing(c, [[26, -14], [102, 30], [102, 50], [26, 54]], BR.olive);
+            AC.wing(c, [[24, 70], [64, 84], [64, 96], [24, 96]], BR.olive);
+            AC.fus(c, [[-100, 0.5], [-84, 12], [-56, 22], [-20, 30], [40, 34], [88, 30], [99, 1]], BR.olive);
+            AC.camo(c, [BR.oliveD, '#5f6b3a', '#3a4529'], 16, 40, [8, 22]);
+            AC.paintAtop(c, () => { c.strokeStyle = BR.gold; c.lineWidth = 3; c.beginPath(); c.moveTo(-30, 10); c.lineTo(0, -30); c.lineTo(30, 10); c.stroke(); });
+            AC.intake(c, 30, -24, 10, 28);
+            AC.missileRail(c, 102, 40, 30, BR.gold);
+            AC.fin(c, 22, 54, 96, 7, BR.oliveD, 4);
+            AC.flagFin(c, 22, 62, 90, 4); AC.flagFin(c, -22, 62, 90, 4);
+            AC.canopy(c, -64, 15, 36, '#9a7a10');
+            AC.roundel(c, 72, 30, 9);
+        }
+    },
+    {
+        name: 'Curupira', desc: 'Guardião da mata, asas invertidas', w: 84,
+        nozzles: [[-11, 96, 8, 'jet'], [11, 96, 8, 'jet']],
+        draw(c) {
+            AC.wing(c, [[22, 34], [100, -18], [100, -4], [24, 62]], '#0f5a2c');
+            AC.wing(c, [[16, -50], [52, -30], [52, -20], [16, -30]], '#0f5a2c');
+            AC.fus(c, [[-100, 0.5], [-82, 9], [-50, 16], [-10, 24], [40, 26], [88, 22], [96, 1]], '#0f5a2c');
+            AC.paintAtop(c, () => { // folhagem
+                const r = seeded(17);
+                for (let i = 0; i < 40; i++) { const x = (r() - 0.5) * 200, y = (r() - 0.5) * 180; c.fillStyle = i % 2 ? 'rgba(20,110,50,0.8)' : 'rgba(8,60,26,0.8)'; c.beginPath(); c.ellipse(x, y, 7, 3, r() * 3, 0, TAU); c.fill(); }
+            });
+            AC.glowLine(c, [[0, -96], [10, -60], [0, -30], [14, 0], [6, 40]], '#ff6a1a', 2.6); // cabelo de fogo
+            AC.glowLine(c, [[22, 34], [100, -18]], '#ffb020', 1.6);
+            AC.fin(c, 18, 58, 94, 6, '#0a4020', 4);
+            AC.canopy(c, -62, 13, 34, '#a0300a');
+            AC.roundel(c, 72, 4, 7);
+        }
+    },
+    {
+        name: 'Guaraci', desc: 'O Sol — delta dourado', w: 88,
+        nozzles: [[-14, 97, 8, 'jet'], [0, 100, 9, 'jet'], [14, 97, 8, 'jet']],
+        draw(c) {
+            AC.wing(c, [[14, -60], [104, 62], [104, 74], [14, 78]], BR.gold);
+            AC.fus(c, [[-100, 0.5], [-78, 9], [-40, 16], [10, 20], [60, 22], [94, 20], [100, 1]], BR.gold);
+            AC.paintAtop(c, () => {
+                const g = c.createRadialGradient(0, 30, 2, 0, 30, 44); g.addColorStop(0, 'rgba(255,255,220,0.9)'); g.addColorStop(1, 'rgba(255,170,0,0)');
+                c.fillStyle = g; c.beginPath(); c.arc(0, 30, 44, 0, TAU); c.fill();
+                c.strokeStyle = 'rgba(255,120,0,0.7)'; c.lineWidth = 2;
+                for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU; c.beginPath(); c.moveTo(Math.cos(a) * 18, 30 + Math.sin(a) * 18); c.lineTo(Math.cos(a) * 34, 30 + Math.sin(a) * 34); c.stroke(); }
+                c.fillStyle = BR.green; for (const s of [1, -1]) { c.beginPath(); c.moveTo(s * 70, 56); c.lineTo(s * 102, 64); c.lineTo(s * 102, 72); c.lineTo(s * 70, 72); c.fill(); }
+            });
+            AC.glowLine(c, [[14, -60], [104, 62]], BR.goldL, 1.6);
+            AC.fin(c, 22, 60, 96, 6, '#a47f1c', 4);
+            AC.canopy(c, -62, 14, 36, '#a0300a');
+            AC.roundel(c, 80, 58, 8);
+        }
+    },
+    {
+        name: 'Jaci', desc: 'A Lua — asa crescente prateada', w: 88,
+        nozzles: [[-16, 80, 8, 'jet'], [16, 80, 8, 'jet']],
+        draw(c) {
+            c.beginPath();
+            c.moveTo(0, -100); c.quadraticCurveTo(60, -40, 104, 40); c.quadraticCurveTo(80, 30, 64, 52); c.quadraticCurveTo(30, 40, 20, 78);
+            c.lineTo(-20, 78); c.quadraticCurveTo(-30, 40, -64, 52); c.quadraticCurveTo(-80, 30, -104, 40); c.quadraticCurveTo(-60, -40, 0, -100); c.closePath();
+            AC.fillShaded(c, '#c8d2dc', -104, 104);
+            AC.fus(c, [[-96, 0.5], [-70, 9], [-30, 15], [30, 17], [74, 14], [82, 1]], '#e8eef4');
+            AC.paintAtop(c, () => { c.fillStyle = 'rgba(80,110,160,0.35)'; for (const [x, y, r] of [[40, 10, 8], [-50, 20, 6], [60, 34, 5], [-30, -10, 5]]) { c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); } });
+            AC.glowLine(c, [[0, -100], [52, -40], [104, 40]], '#9fd8ff', 1.8);
+            AC.star(c, 0, 20, 7, '#ffffff', '#9fd8ff');
+            AC.canopy(c, -56, 12, 30, '#1f60c8');
+            AC.roundel(c, 70, 34, 7);
+        }
+    },
+    {
+        name: 'Estrela do Brasil', desc: 'O ápice — Ordem e Progresso', w: 92,
+        nozzles: [[-22, 94, 8, 'jet'], [-8, 99, 8, 'jet'], [8, 99, 8, 'jet'], [22, 94, 8, 'jet']],
+        draw(c) {
+            AC.wing(c, [[18, -6], [104, 52], [104, 66], [18, 72]], BR.green);
+            AC.wing(c, [[14, -60], [46, -20], [46, -6], [14, -6]], BR.green);
+            AC.wing(c, [[22, 76], [60, 88], [60, 98], [22, 98]], BR.green);
+            AC.fus(c, [[-100, 0.5], [-80, 10], [-40, 18], [10, 26], [60, 28], [92, 26], [99, 1]], BR.green);
+            AC.paintAtop(c, () => {
+                c.fillStyle = BR.yellow; c.beginPath(); c.moveTo(0, -40); c.lineTo(60, 30); c.lineTo(0, 92); c.lineTo(-60, 30); c.closePath(); c.fill();
+                const g = c.createRadialGradient(-8, 22, 3, 0, 30, 30); g.addColorStop(0, '#4f7fe4'); g.addColorStop(1, BR.blueD);
+                c.fillStyle = g; c.beginPath(); c.arc(0, 30, 30, 0, TAU); c.fill();
+                c.strokeStyle = '#fff'; c.lineWidth = 3; c.beginPath(); c.arc(0, 62, 44, -2.3, -0.84); c.stroke();
+            });
+            [[0, 10, 3], [-12, 24, 2.4], [12, 26, 2.6], [-6, 40, 2.2], [8, 44, 2], [16, 36, 1.6], [-18, 36, 1.6], [2, 52, 2.4]].forEach(([x, y, r]) => AC.star(c, x, y, r, '#ffffff', '#ffffff'));
+            AC.glowLine(c, [[18, -6], [104, 52]], BR.yellowL, 1.6);
+            AC.glowLine(c, [[14, -60], [46, -20]], BR.yellowL, 1.4);
+            AC.fin(c, 22, 60, 96, 6, BR.blue, 4);
+            AC.flagFin(c, 22, 66, 92, 4); AC.flagFin(c, -22, 66, 92, 4);
+            AC.canopy(c, -64, 14, 36, '#d9b13b');
+            AC.roundel(c, 80, 50, 8);
+        }
     }
 ];
 

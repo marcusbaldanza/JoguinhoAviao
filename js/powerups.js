@@ -52,6 +52,8 @@ function choosePowerUp() {
     for (const [k, d] of Object.entries(POWERUP_TYPES)) weights[k] = d.weight;
     const hpk = p.hp / p.maxHp;
     weights.health *= hpk < 0.4 ? 2.4 : hpk > 0.9 ? 0.25 : 1;
+    // reparo acompanha o dano recebido recentemente (mais tiros na tela = mais cura) e a dificuldade
+    weights.health *= clamp((G.recentDmg || 0) / (p.maxHp * 0.25), 0.6, 3) * DIFFICULTY[G.difficulty].healBoost;
     if (p.isMax('cannon')) weights.cannon = 2;
     if (p.isMax('engine')) weights.feather = 1;
     if (p.isMax('missile')) weights.missile = 1;
@@ -76,7 +78,7 @@ function applyPowerUp(pu) {
         if (ups < 0) bonus = 500;
         else label = ups ? '' : `${POWERUP_TYPES[t].label} +100 XP`;
     } else switch (t) {
-        case 'health': { const before = p.hp; p.hp = Math.min(p.maxHp, p.hp + 25); label = `+${Math.round(p.hp - before)} Vida`; if (p.hp - before < 5) bonus = 300; break; }
+        case 'health': { const before = p.hp; p.hp = Math.min(p.maxHp, p.hp + p.maxHp * (HEAL.fraction + HEAL.perStage * G.stageIndex) + HEAL.flat); label = `+${Math.round(p.hp - before)} Vida`; if (p.hp - before < 5) bonus = 300; break; }
         case 'bomb': if (p.bombs < p.maxBombs) { p.bombs++; label = '+1 Bomba'; } else bonus = 400; break;
         case 'shield': p.giveShield(); label = 'Escudo Ativo'; break;
     }
@@ -148,7 +150,7 @@ function dropGears(x, y, n) {
 
 function collectGear(g) {
     const p = G.player;
-    const ups = p.addXP(g.kind, Math.max(4, Math.round(GEAR_XP / G.mod.density)));
+    const ups = p.addXP(g.kind, GEAR_XP);
     if (ups < 0) G.addScore(40, undefined, undefined, true);
     G.stats.gears = (G.stats.gears || 0) + 1;
     FX.spawn({ type: 'flash', x: g.x, y: g.y, size: 14, size1: 26, life: 0.15, color: GEAR_KINDS[g.kind].color });

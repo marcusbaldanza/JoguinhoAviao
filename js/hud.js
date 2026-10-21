@@ -5,7 +5,7 @@ const HUD = {
     el: {}, cache: {}, radioT: 0,
 
     init() {
-        const ids = ['boss-strip', 'boss-strip-fill', 'hud-grazes', 'hud-name', 'hud-score', 'hud-mult', 'hud-combo', 'hud-combo-wrap', 'hud-progress', 'hud-progress-wrap', 'hud-boss-wrap', 'hud-boss',
+        const ids = ['hud-lives', 'hud-lives-row', 'boss-strip', 'boss-strip-fill', 'hud-grazes', 'hud-name', 'hud-score', 'hud-mult', 'hud-combo', 'hud-combo-wrap', 'hud-progress', 'hud-progress-wrap', 'hud-boss-wrap', 'hud-boss',
             'hud-boss-ghost', 'hud-boss-name', 'hud-boss-name-small', 'hud-stage', 'hud-stage-name', 'hud-time', 'hud-hp', 'hud-hp-ghost', 'hud-shield', 'hud-hp-text',
             'hud-model', 'lv-cannon', 'lv-engine', 'lv-missile', 'xp-cannon', 'xp-engine', 'xp-missile', 'hud-bombs', 'hud-roll', 'hud-fury', 'radio', 'radio-who', 'radio-text'];
         for (const id of ids) this.el[id] = document.getElementById(id);
@@ -27,6 +27,11 @@ const HUD = {
     show(v) { document.body.classList.toggle('hud-on', v); },
 
     setAccent(color) { document.documentElement.style.setProperty('--accent', color); },
+
+    flashLives() {
+        const el = this.el['hud-lives-row'];
+        el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+    },
 
     radio(who, text) {
         this.el['radio-who'].textContent = who;
@@ -62,7 +67,7 @@ const HUD = {
         this.set('hud-progress-wrap', 'hidden', bossVisible);
         this.set('boss-strip', 'hidden', !bossVisible);
         if (bossVisible) this.set('boss-strip-fill', 'width', `${((boss.hp / boss.maxHp) * 100).toFixed(1)}%`);
-        if (G.stats) this.set('hud-grazes', 'text', `RASANTES ${G.stats.grazes}`);
+        if (G.stats) { this.set('hud-grazes', 'text', `RASANTES ${G.stats.grazes}`); this.set('hud-lives', 'text', formatScore(G.stats.lives || 0)); }
         if (bossVisible) {
             const k = `${((boss.hp / boss.maxHp) * 100).toFixed(1)}%`;
             this.set('hud-boss-name', 'text', boss.def.name + (boss.armored ? ' · BLINDADO' : ''));

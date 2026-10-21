@@ -87,7 +87,7 @@ const Ranking = {
             const reach = e.stage ? escapeHTML(e.stage) : `Nv ${escapeHTML(e.level ?? '-')}`;
             const insignia = e.hasInsignia ? ' <img src="assets/opt/insigniaBrasil.png" class="insignia" title="Elite: 5+ chefes derrotados" alt="">' : '';
             const mine = meN && String(e.name || '').trim().toLowerCase() === meN ? ' class="me"' : '';
-            return `<tr${mine}><td>${i + 1}</td><td>${escapeHTML(e.name)}${insignia}</td><td>${formatScore(Number(e.score) || 0)}</td><td>${reach}</td><td>${Number(e.bosses) || 0}</td><td>${escapeHTML(e.time || '-')}</td><td>${total}</td><td>${escapeHTML(e.date || '-')}</td></tr>`;
+            return `<tr${mine}><td>${i + 1}</td><td>${escapeHTML(e.name)}${insignia}</td><td>${formatScore(Number(e.score) || 0)}</td><td>${reach}</td><td>${Number(e.bosses) || 0}</td><td>${total}</td><td class="lives">${e.lives === undefined ? '-' : formatScore(Number(e.lives) || 0)}</td><td>${escapeHTML(e.time || '-')}</td></tr>`;
         }).join('');
     }
 };

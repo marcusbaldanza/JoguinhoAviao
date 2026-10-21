@@ -386,12 +386,20 @@ const FX = {
     },
 
     // ------------------------------------------------------------------ clima
+    /** troca de clima entre fases: zera tudo que pertence ao clima anterior */
+    setWeather(kind) {
+        this.weatherKind = kind;
+        this.weather.length = 0;
+        this.lightning = 0;
+    },
+
     updateWeather(dt, kind) {
+        if (kind !== this.weatherKind) this.setWeather(kind); // proteção extra contra resíduos de outra fase
         const wv = this.weather;
         if (kind === 'embers' && chance(dt * 18)) wv.push({ k: 'ember', x: rand(0, W), y: H + 10, vx: rand(-20, 20), vy: rand(-90, -40), s: rand(1.5, 3.5), life: rand(3, 6), t: 0 });
         if (kind === 'rain') for (let i = 0; i < 6; i++) wv.push({ k: 'rain', x: rand(-100, W), y: rand(-60, -10), vx: 160, vy: rand(900, 1200), s: rand(12, 22), life: 1.2, t: 0 });
         if (kind === 'sand' && chance(dt * 40)) wv.push({ k: 'sand', x: -60, y: rand(0, H), vx: rand(500, 800), vy: rand(30, 80), s: rand(20, 60), life: 2, t: 0 });
-        if (kind === 'fog' && chance(dt * 0.9)) wv.push({ k: 'fog', x: rand(-150, W - 150), y: -300, vx: rand(-10, 10), vy: rand(130, 180), s: rand(1.6, 2.6), life: 12, t: 0, tex: randInt(0, 3) });
+        if (kind === 'fog' && chance(dt * 0.9)) wv.push({ k: 'fog', x: rand(-150, W - 150), y: -300, vx: rand(-10, 10), vy: rand(130, 180), s: rand(1.6, 2.6), life: 12, t: 0, tex: randInt(0, TEX.clouds.length - 1) });
         if (kind === 'rain' && chance(dt * 0.12)) { this.lightning = 1; Sound.noiseHit({ dur: 1.4, vol: 0.25, f0: 300, f1: 40, delay: 0.3 }); }
         for (let i = wv.length - 1; i >= 0; i--) {
             const p = wv[i];
@@ -399,38 +407,43 @@ const FX = {
             if (p.t > p.life || p.y > H + 400 || p.x > W + 100) { wv[i] = wv[wv.length - 1]; wv.pop(); }
         }
     },
+
+    /** cada partícula é desenhada pelo SEU próprio tipo — nunca depende do clima atual */
     drawWeather(ctx, kind) {
-        if (kind === 'fog') {
-            for (const p of this.weather) {
-                const tex = TEX.clouds[p.tex];
-                ctx.globalAlpha = 0.35;
-                ctx.drawImage(tex, p.x, p.y, tex.width * p.s, tex.height * p.s);
-            }
-            ctx.globalAlpha = 1;
-            ctx.fillStyle = 'rgba(210,225,215,0.10)';
-            ctx.fillRect(0, 0, W, H);
-            return;
-        }
-        if (kind === 'sand') { ctx.fillStyle = 'rgba(220,170,90,0.08)'; ctx.fillRect(0, 0, W, H); }
         ctx.lineCap = 'round';
         for (const p of this.weather) {
-            if (p.k === 'rain') {
-                ctx.strokeStyle = 'rgba(200,220,255,0.35)';
-                ctx.lineWidth = 1.2;
-                ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 0.015, p.y - p.s); ctx.stroke();
-            } else if (p.k === 'sand') {
-                ctx.strokeStyle = 'rgba(235,200,140,0.35)';
-                ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.s, p.y - p.s * 0.1); ctx.stroke();
-            } else if (p.k === 'ember') {
-                ctx.globalCompositeOperation = 'lighter';
-                ctx.globalAlpha = (1 - p.t / p.life) * (0.5 + 0.5 * Math.sin(p.t * 9));
-                ctx.drawImage(this.glowFire[1], p.x - p.s * 2, p.y - p.s * 2, p.s * 4, p.s * 4);
-                ctx.globalAlpha = 1;
-                ctx.globalCompositeOperation = 'source-over';
+            switch (p.k) {
+                case 'fog': {
+                    const tex = TEX.clouds[p.tex] || TEX.clouds[0];
+                    if (!tex) break;
+                    ctx.globalAlpha = 0.35;
+                    ctx.drawImage(tex, p.x, p.y, tex.width * p.s, tex.height * p.s);
+                    ctx.globalAlpha = 1;
+                    break;
+                }
+                case 'rain':
+                    ctx.strokeStyle = 'rgba(200,220,255,0.35)';
+                    ctx.lineWidth = 1.2;
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.vx * 0.015, p.y - p.s); ctx.stroke();
+                    break;
+                case 'sand':
+                    ctx.strokeStyle = 'rgba(235,200,140,0.35)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - p.s, p.y - p.s * 0.1); ctx.stroke();
+                    break;
+                case 'ember':
+                    ctx.globalCompositeOperation = 'lighter';
+                    ctx.globalAlpha = Math.max(0, (1 - p.t / p.life) * (0.5 + 0.5 * Math.sin(p.t * 9)));
+                    ctx.drawImage(this.glowFire[1], p.x - p.s * 2, p.y - p.s * 2, p.s * 4, p.s * 4);
+                    ctx.globalAlpha = 1;
+                    ctx.globalCompositeOperation = 'source-over';
+                    break;
             }
         }
         ctx.lineCap = 'butt';
+        // véus de cor do clima atual
+        if (kind === 'fog') { ctx.fillStyle = 'rgba(210,225,215,0.10)'; ctx.fillRect(0, 0, W, H); }
+        if (kind === 'sand') { ctx.fillStyle = 'rgba(220,170,90,0.08)'; ctx.fillRect(0, 0, W, H); }
         if (this.lightning > 0) {
             ctx.fillStyle = `rgba(220,230,255,${this.lightning * 0.35})`;
             ctx.fillRect(0, 0, W, H);

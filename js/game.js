@@ -28,8 +28,8 @@ const G = {
         Store.set('gnc_settings', s);
     },
 
-    /** progressão global: 0 na fase 1, +1 por fase, +5 por ciclo */
-    get progress() { return this.stageIndex + this.loop * 5; },
+    /** progressão global: 0 na fase 1, +1 por fase, +10 por ciclo (modo infinito do Ás) */
+    get progress() { return this.stageIndex + this.loop * STAGES.length; },
 
     computeMod() {
         const d = DIFFICULTY[this.difficulty], L = this.loop, g = this.progress, S = SCALING, C = S.loopCompound;
@@ -38,9 +38,9 @@ const G = {
             hp: d.enemyHp * (1 + S.hpPerStage * g) * Math.pow(C.hp, L) * (1 + S.powerHp * pw),
             dmg: (1 + S.dmgPerStage * g) * Math.pow(C.dmg, L),
             dmgTaken: d.dmgTaken,
-            bulletSpeed: Math.min(S.caps.bulletSpeed, d.bulletSpeed * (1 + S.bulletSpeedPerStage * g)),
-            fireRate: Math.min(S.caps.fireRate, d.fireRate * (1 + S.fireRatePerStage * g) * Math.pow(C.fireRate, L)),
-            density: Math.min(S.caps.density, d.density * (1 + S.densityPerStage * g) * Math.pow(C.density, L) * (1 + S.powerDensity * pw)),
+            bulletSpeed: Math.min(S.caps.bulletSpeed * (1 + 0.1 * L), d.bulletSpeed * (1 + S.bulletSpeedPerStage * g) * Math.pow(C.bulletSpeed, L)),
+            fireRate: Math.min(S.caps.fireRate * (1 + 0.25 * L), d.fireRate * (1 + S.fireRatePerStage * g) * Math.pow(C.fireRate, L)),
+            density: Math.min(S.caps.density * (1 + 0.15 * L), d.density * (1 + S.densityPerStage * g) * Math.pow(C.density, L) * (1 + S.powerDensity * pw)),
             elite: Math.min(S.caps.elite, d.elite + S.elitePerStage * g),
             extraShots: Math.floor((g + (this.difficulty === 'as' ? 1 : 0)) / 2),
             score: d.score * (1 + 0.25 * g)
@@ -48,7 +48,7 @@ const G = {
     },
 
     newStats() {
-        return { kills: Object.fromEntries(Object.keys(ENEMY_TYPES).map((k) => [k, 0])), totalKills: 0, bosses: 0, powerups: {}, gears: 0, elites: 0, maxCombo: 0, grazes: 0, bombsUsed: 0 };
+        return { kills: Object.fromEntries(Object.keys(ENEMY_TYPES).map((k) => [k, 0])), totalKills: 0, bosses: 0, powerups: {}, gears: 0, elites: 0, maxCombo: 0, grazes: 0, bombsUsed: 0, lives: 0 };
     },
 
     toMenu() {
@@ -67,7 +67,7 @@ const G = {
         this.score = 0; this.mult = 1; this.combo = 0; this.comboT = 0;
         this.playTime = 0; this.stageIndex = 0; this.loop = 0;
         this.stats = this.newStats();
-        this.nextDrop = 4; this.dropKills = 0;
+        this.supply = 1 - SUPPLY.firstDropAt * DIFFICULTY[this.difficulty].supply / SUPPLY.stageSeconds; this.lastDropT = 0; this.recentDmg = 0; this.gearTokens = 2;
         this.saved = false;
         this.showBriefing(true);
     },
@@ -81,7 +81,8 @@ const G = {
 
     setScenery(index) {
         const def = STAGES[index];
-        this.bgKey = def.bg; this.ambient = def.ambient; this.weather = def.weather; this.grade = def.grade;
+        if (this.weather !== def.weather) FX.setWeather(def.weather); // troca de clima: limpa partículas do clima anterior
+        this.bgKey = def.bg; this.ambient = def.ambient; this.weather = def.weather; this.grade = def.grade; this.flipX = !!def.flipX;
         HUD.setAccent(def.hudColor);
         FX.initClouds(def.weather === 'fog' ? 0.6 : def.weather === 'rain' ? 1.5 : 1);
     },
@@ -92,8 +93,9 @@ const G = {
         const i = this.stageIndex, def = STAGES[i];
         this.setScenery(i);
         Sound.playMusic(def.music, 'calm');
-        let pro = withPrologue ? STORY.prologue : null;
-        if (!pro && this.loop > 0 && i === 0) pro = [STORY.loops[Math.min(this.loop - 1, STORY.loops.length - 1)]];
+        let pro = withPrologue ? [...STORY.prologue] : [];
+        if (this.loop > 0 && i === 0) pro.push(STORY.loops[Math.min(this.loop - 1, STORY.loops.length - 1)]);
+        if (def.scene && !withPrologue) pro.push(...def.scene);
         UI.briefing(`CAPÍTULO ${i + 1} · ${def.chapter}${this.loop ? ' · CICLO ' + (this.loop + 1) : ''}`, def.name.toUpperCase(), def.briefing, pro, () => this.startStage());
     },
 
@@ -150,25 +152,38 @@ const G = {
         this.stage.kills++;
         this.player.addFury(e.def.elite ? 35 : e.veteran ? 12 : e.def.kind === 'drone' ? 2 : 5);
         if (e.veteran) this.stats.elites++;
-        const gears = e.def.elite ? 7 : e.veteran ? 3 : e.def.kind !== 'drone' && chance(GEAR_DROP / Math.sqrt(this.mod.density)) ? 1 : 0;
+        // peças: o bombardeiro e os veteranos sempre soltam; os demais dependem das fichas de tempo
+        let gears = e.def.elite ? 4 : e.veteran ? 2 : 0;
+        if (!gears && e.def.kind !== 'drone' && this.gearTokens >= 1 && chance(GEAR_DROP)) { gears = 1; this.gearTokens -= 1; }
         if (gears) dropGears(e.x, e.y, gears);
-        if (e.def.elite) {
-            dropPowerUp(e.x - 40, e.y, !this.player.isMax('cannon') ? 'cannon' : undefined);
-            dropPowerUp(e.x + 40, e.y);
-            return;
+        if (e.def.elite) { dropPowerUp(e.x, e.y, !this.player.isMax('cannon') ? 'cannon' : undefined); return; }
+        // medidor de suprimentos: pequeno bônus por abate, limitado por fase (o grosso vem do tempo)
+        if (this.stage.killSupply < SUPPLY.killBonusCap) {
+            const add = SUPPLY.killBonus * (e.veteran ? 3 : 1);
+            this.stage.killSupply += add; this.supply += add;
         }
-        if (++this.dropKills >= this.nextDrop) {
-            this.dropKills = 0;
-            const first = this.stats.totalKills <= 5;
-            this.nextDrop = randInt(...POWERUP_PITY_KILLS) + this.stageIndex * 2 + this.loop * 3;
-            dropPowerUp(e.x, e.y, first ? 'cannon' : undefined);
-        }
+        this.trySupplyDrop(e.x, e.y);
     },
 
+    /** solta um power-up quando o medidor de suprimentos enche (distribuição equalizada entre as fases) */
+    trySupplyDrop(x, y) {
+        if (this.supply < 1 || this.playTime - this.lastDropT < 4) return;
+        this.supply -= 1;
+        this.lastDropT = this.playTime;
+        this.stats.drops = (this.stats.drops || 0) + 1;
+        const first = this.stats.drops === 1;
+        dropPowerUp(x ?? rand(80, W - 80), y ?? -30, first ? 'cannon' : undefined);
+    },
+
+    /** inimigo passou por você: vidas palestinas perdidas (proporcional ao tipo e à fase) */
     onEnemyEscaped(e) {
-        if (!this.stage || e.def.kind === 'drone') return;
+        if (!this.stage) return;
         this.stage.onEscaped();
-        FX.text(clamp(e.x, 60, W - 60), H - 140, 'ESCOLTA -200', '#ff8a7a', 16, 1.2);
+        const lives = Math.round((e.def.lives || 1) * (this.stageIndex + 1) * (e.veteran ? 2 : 1) * (this.loop + 1));
+        this.stats.lives += lives;
+        this.stage.lives = (this.stage.lives || 0) + lives;
+        FX.text(clamp(e.x, 70, W - 70), H - 120, `−${lives} ${lives === 1 ? 'VIDA' : 'VIDAS'}`, '#ff5b4a', 18 + Math.min(10, lives / 5), 1.4);
+        HUD.flashLives();
     },
 
     onBossDefeated(boss) {
@@ -198,6 +213,7 @@ const G = {
         const rows = [
             { label: 'Chefe derrotado', value: '+' + formatScore(bossBonus * this.mod.score) },
             { label: `Bônus de escolta (${st.escaped} escaparam)`, value: '+' + formatScore(escort) },
+            { label: 'Vidas palestinas perdidas na fase', value: formatScore(st.lives || 0), danger: (st.lives || 0) > 0 },
             { label: 'Blindagem restante', value: '+' + formatScore(hpBonus) },
             { label: 'Fase sem dano', value: noHit ? '+' + formatScore(noHit) : '—' },
             { label: 'Abates na fase', value: String(st.kills) },
@@ -206,7 +222,13 @@ const G = {
             { label: 'PONTUAÇÃO', value: formatScore(this.score), total: true }
         ];
         UI.tally(rows, () => {
-            if (this.stageIndex >= STAGES.length - 1) { this.state = 'victory'; Sound.playMusic('menu', 'full'); UI.victory(STORY.epilogue); return; }
+            if (this.stageIndex >= STAGES.length - 1) {
+                this.state = 'victory';
+                Sound.playMusic('menu', 'full');
+                const endless = DIFFICULTY[this.difficulty].endless;
+                UI.victory([...STORY.epilogue, ...(endless ? STORY.endingAs : STORY.endingNormal)], endless, this.stats.lives);
+                return;
+            }
             this.offerPerks();
         });
     },
@@ -304,7 +326,7 @@ const G = {
     },
 
     stageLabel() {
-        return `Fase ${this.stageIndex + 1}${this.loop ? ` (Ciclo ${this.loop + 1})` : ''}`;
+        return `Fase ${this.stageIndex + 1}/${STAGES.length}${this.loop ? ` (Ciclo ${this.loop + 1})` : ''}`;
     },
 
     gameOver(abandoned = false, victory = false) {
@@ -318,13 +340,13 @@ const G = {
             stage: victory ? `Vitória${this.loop ? ' · C' + (this.loop + 1) : ''}` : this.stageLabel(),
             time: formatTime(this.playTime), bosses: st.bosses, kills: st.kills, totalKills: st.totalKills,
             powerups: st.powerups, maxCombo: st.maxCombo, grazes: st.grazes, bombsUsed: st.bombsUsed,
-            model: `${this.player.model.name} (C${this.player.cannon}/M${this.player.engine}/R${this.player.missiles})`, gears: st.gears, elites: st.elites
+            model: `${this.player.model.name} (C${this.player.cannon}/M${this.player.engine}/R${this.player.missiles})`, gears: st.gears, elites: st.elites, lives: st.lives
         };
         UI.gameOver(report, victory);
         if (this.saved) return;
         this.saved = true;
         const entry = {
-            name: report.name, score: report.score, stage: report.stage, level: this.stageIndex + 1 + this.loop * 5,
+            name: report.name, score: report.score, stage: report.stage, level: this.stageIndex + 1 + this.loop * STAGES.length, lives: st.lives,
             bosses: st.bosses, hasInsignia: st.bosses >= 5, time: report.time, difficulty: report.difficulty, diffKey: this.difficulty,
             kills: st.kills, totalKills: st.totalKills,
             powerups: Object.values(st.powerups).reduce((a, b) => a + b, 0), date: new Date().toLocaleDateString('pt-BR')
@@ -343,6 +365,13 @@ const G = {
             if (t.t <= 0) { this.timers.splice(i, 1); t.fn(); }
         }
         if (this.comboT > 0) { this.comboT -= dt; if (this.comboT <= 0) { this.combo = 0; this.mult = 1; } }
+        // suprimentos chegam também com o tempo (garante power-ups mesmo com poucos abates, ex.: fase 1)
+        if (this.stage.phase !== 'intro') {
+            this.supply += dt * DIFFICULTY[this.difficulty].supply / SUPPLY.stageSeconds;
+            if (this.supply >= 1.15) this.trySupplyDrop(); // sem abates recentes: cai do alto da tela
+            this.gearTokens = Math.min(GEAR_BUCKET, this.gearTokens + GEAR_RATE * dt);
+        }
+        this.recentDmg *= Math.exp(-dt / HEAL.recentWindow);
 
         this.computeMod();
         this.stage.update(dt);
@@ -524,6 +553,7 @@ const G = {
             ctx.save();
             ctx.translate(-20, y);
             if (((k % 2) + 2) % 2 === 1) { ctx.translate(0, T); ctx.scale(1, -1); } // espelha tiles alternados: emenda invisível
+            if (this.flipX) { ctx.translate(T, 0); ctx.scale(-1, 1); } // cenário espelhado (variação para fases novas)
             ctx.drawImage(img, 0, 0, T, T);
             ctx.restore();
         }
@@ -678,17 +708,24 @@ const G = {
         if (G.state === 'playing' && Input.hit('pause')) G.pause();
         else if (G.state === 'paused' && Input.hit('pause') && UI.active === 'screen-pause') G.resume();
 
-        if (G.state !== 'paused') {
-            let dt = realDt;
-            if (G.slowT > 0) { G.slowT -= realDt; dt *= G.timeScale; if (G.slowT <= 0) G.timeScale = 1; }
-            G.updateAmbient(dt);
-            if (G.state === 'playing') G.update(dt);
-            HUD.update(realDt);
-        }
-        ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
-        G.renderScale = renderScale;
-        G.render(ctx);
-        Input.endFrame();
+        // o próximo quadro é agendado ANTES: um erro inesperado nunca mais congela o jogo
         requestAnimationFrame(loop);
+        try {
+            if (G.state !== 'paused') {
+                let dt = realDt;
+                if (G.slowT > 0) { G.slowT -= realDt; dt *= G.timeScale; if (G.slowT <= 0) G.timeScale = 1; }
+                G.updateAmbient(dt);
+                if (G.state === 'playing') G.update(dt);
+                HUD.update(realDt);
+            }
+            ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
+            G.renderScale = renderScale;
+            G.render(ctx);
+        } catch (err) {
+            if (!loop.errors || loop.errors < 5) console.error('Erro no quadro (o jogo continua):', err);
+            loop.errors = (loop.errors || 0) + 1;
+            ctx.restore && ctx.setTransform(1, 0, 0, 1, 0, 0);
+        }
+        Input.endFrame();
     }
 })();

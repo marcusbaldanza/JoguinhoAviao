@@ -125,7 +125,7 @@ const UI = {
     // ---------------------------------------------------------------- fim de fase
     tally(rows, onNext) {
         this.show('screen-clear');
-        this.$('tally').innerHTML = rows.map((r, i) => `<div class="tally-row ${r.total ? 'total' : ''}" style="animation-delay:${i * 0.25}s"><span>${escapeHTML(r.label)}</span><b>${escapeHTML(r.value)}</b></div>`).join('');
+        this.$('tally').innerHTML = rows.map((r, i) => `<div class="tally-row ${r.total ? 'total' : ''} ${r.danger ? 'danger' : ''}" style="animation-delay:${i * 0.25}s"><span>${escapeHTML(r.label)}</span><b>${escapeHTML(r.value)}</b></div>`).join('');
         this.clearNext = () => { this.clearNext = null; Sound.ui(); onNext(); };
     },
 
@@ -158,6 +158,7 @@ const UI = {
             ${kv('Tempo de voo', r.time)}${kv('Chefes derrotados', r.bosses)}${kv('Maior combo', 'x' + r.maxCombo)}
             ${kv('Rasantes (graze)', r.grazes)}${kv('Bombas usadas', r.bombsUsed)}
             ${kv('Avião final', r.model)}${kv('Peças coletadas', r.gears)}${kv('Veteranos abatidos', r.elites)}
+            <div class="kv lives"><span>Vidas palestinas perdidas (quanto menor, melhor)</span><b>${formatScore(r.lives || 0)}</b></div>
             <h3>Relatório de abates (${r.totalKills})</h3>${kills}
             <h3>Suprimentos coletados</h3>${pw}
             <div class="kv"><span id="go-save-status">Registrando no ranking...</span></div>`;
@@ -167,9 +168,12 @@ const UI = {
         if (el) el.textContent = ok ? `Pontuação registrada no ranking do nível ${DIFFICULTY[G.difficulty].label}.` : 'Sem conexão com o ranking — a pontuação será enviada na próxima partida.';
     },
 
-    victory(lines) {
+    victory(lines, endless, lives) {
         this.show('screen-victory');
-        this.$('victory-text').innerHTML = lines.map((l) => `<p>${escapeHTML(l)}</p>`).join('');
+        this.$('victory-text').innerHTML = lines.map((l) => `<p>${escapeHTML(l)}</p>`).join('')
+            + `<p class="lives-line">Vidas palestinas perdidas em toda a campanha: <b>${formatScore(lives || 0)}</b>${lives ? '' : ' — ninguém ficou para trás!'}</p>`;
+        this.$('btn-loop').classList.toggle('hidden', !endless); // ciclos infinitos: só no Ás
+        this.$('btn-finish').textContent = endless ? 'Encerrar e registrar' : 'Registrar no ranking';
     },
 
     // ---------------------------------------------------------------- configurações / ranking

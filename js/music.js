@@ -78,6 +78,61 @@ const MUSIC_TRACKS = {
         drums: { kick: 'x..x..x.x..x....', snare: '....X.......X...', tom: '..............xx', hat: 'x.x.x.x.x.x.x.x.', taiko: 'x.......x.......' },
         delay: 0.25
     },
+    // Fase 2 — Campos de Tendas: lamento em Ré frígio, tambor de moldura e ney (flauta de cana)
+    camp: {
+        bpm: 96, root: 38, chords: [[0, 'm'], [1, 'M'], [0, 'm'], [-2, 'm']],
+        bass: { wave: 'triangle', pattern: '0.......0...1...', vol: 0.15, cutoff: 600, decay: 0.6 },
+        pad: { wave: 'sawtooth', vol: 0.035, cutoff: 700, attack: 1.0, octave: 12, voices: 3 },
+        arp: { wave: 'sine', seq: [0, 1, 2, 1], every: 4, octave: 24, vol: 0.03, decay: 0.3 },
+        lead: { wave: 'triangle', octave: 24, vol: 0.06, attack: 0.12, vibrato: 9,
+            notes: [[0, 12, 6], [6, 13, 2], [8, 12, 4], [12, 10, 4], [16, 8, 6], [22, 7, 2], [24, 8, 8], [32, 7, 4], [36, 8, 2], [38, 10, 2], [40, 12, 8], [48, 13, 4], [52, 12, 4], [56, 7, 8]] },
+        drums: { dum: 'x.......x.x.....', tek: '....x.......x..x', shaker: '..x...x...x...x.' },
+        delay: 0.4
+    },
+    // Fase 4 — Hospital Sitiado: tensão em Fá menor, batida de coração, cordas pulsantes
+    hospital: {
+        bpm: 100, root: 41, chords: [[0, 'm'], [-4, 'M'], [-7, 'm'], [-5, 'M']],
+        bass: { wave: 'sawtooth', pattern: '0.0.....0.0.....', vol: 0.13, cutoff: 420, decay: 0.2 },
+        pad: { wave: 'sawtooth', vol: 0.045, cutoff: 1000, attack: 0.5, octave: 12, voices: 3 },
+        arp: { wave: 'square', seq: [3, 2, 1, 2], every: 2, octave: 24, vol: 0.018, decay: 0.1, cutoff: 1800 },
+        lead: { wave: 'sine', octave: 36, vol: 0.05, attack: 0.02, decay: 0.6,
+            notes: [[0, 7, 4], [4, 8, 4], [8, 7, 4], [12, 3, 4], [16, 8, 4], [20, 7, 4], [24, 5, 8], [32, 3, 4], [36, 5, 4], [40, 7, 8], [48, 8, 4], [52, 10, 4], [56, 7, 8]] },
+        drums: { kick: 'x..x............', tom: '........x.......', hat: '..x...x...x...x.', ohat: '..............x.' },
+        delay: 0.35
+    },
+    // Fase 6 — A Travessia do Rio: folk acelerado em Sol menor, flauta e percussão de mãos
+    river: {
+        bpm: 124, root: 43, chords: [[0, 'm'], [-2, 'M'], [-4, 'M'], [-5, 'M']],
+        bass: { wave: 'triangle', pattern: '0..5..0.0..5..O.', vol: 0.15, cutoff: 800, decay: 0.3 },
+        pad: { wave: 'triangle', vol: 0.04, cutoff: 1400, attack: 0.3, octave: 12, voices: 2 },
+        arp: { wave: 'sine', seq: [0, 1, 2, 3, 2, 1], every: 1, octave: 24, vol: 0.03, decay: 0.09 },
+        lead: { wave: 'triangle', octave: 24, vol: 0.06, attack: 0.04, vibrato: 6,
+            notes: [[0, 7, 2], [2, 10, 2], [4, 12, 4], [8, 10, 2], [10, 12, 2], [12, 14, 4], [16, 15, 4], [20, 14, 2], [22, 12, 2], [24, 10, 8], [32, 12, 2], [34, 10, 2], [36, 7, 4], [40, 5, 2], [42, 7, 2], [44, 10, 4], [48, 12, 4], [52, 14, 4], [56, 12, 8]] },
+        drums: { dum: 'x..x..x...x..x..', tek: '..x..x..x..x..x.', kick: 'x.......x.......', shaker: 'xxxxxxxxxxxxxxxx' },
+        delay: 0.25
+    },
+    // Fase 8 — Céu de Ferro: industrial em Dó# menor, pesado e implacável
+    ironsky: {
+        bpm: 150, root: 37, chords: [[0, 'm'], [0, 'm'], [-4, 'M'], [-2, 'M']],
+        bass: { wave: 'sawtooth', pattern: '0.00.00.0.00.0O.', vol: 0.12, cutoff: 900, decay: 0.12, drive: true },
+        pad: { wave: 'square', vol: 0.03, cutoff: 1200, attack: 0.2, octave: 12, voices: 2, quality: '5' },
+        arp: { wave: 'sawtooth', seq: [0, 3, 2, 1], every: 1, octave: 24, vol: 0.016, decay: 0.06, cutoff: 2200 },
+        lead: { wave: 'sawtooth', octave: 24, vol: 0.045, cutoff: 2600, drive: true,
+            notes: [[0, 12, 3], [3, 15, 3], [6, 14, 2], [8, 12, 8], [16, 8, 3], [19, 10, 3], [22, 12, 2], [24, 7, 8], [32, 12, 3], [35, 15, 3], [38, 17, 2], [40, 19, 8], [48, 17, 4], [52, 15, 4], [56, 14, 8]] },
+        drums: { kick: 'x..x..x.x.x..x..', snare: '....X.......X...', clap: '....x.......x..x', hat: 'x.xxx.xxx.xxx.xx', taiko: 'x...............' },
+        delay: 0.12
+    },
+    // Fase 9 — Porto da Esperança: hino esperançoso em Si bemol maior
+    port: {
+        bpm: 132, root: 34, chords: [[0, 'M'], [7, 'M'], [9, 'm'], [5, 'M']],
+        bass: { wave: 'sawtooth', pattern: '0...0.0.0...0.5.', vol: 0.12, cutoff: 750, decay: 0.25 },
+        pad: { wave: 'sawtooth', vol: 0.055, cutoff: 1700, attack: 0.4, octave: 24, voices: 3 },
+        arp: { wave: 'square', seq: [0, 1, 2, 3, 2, 1], every: 2, octave: 36, vol: 0.016, decay: 0.08, cutoff: 3000 },
+        lead: { wave: 'square', octave: 36, vol: 0.045, cutoff: 3200, vibrato: 4,
+            notes: [[0, 7, 4], [4, 9, 2], [6, 11, 2], [8, 12, 6], [14, 14, 2], [16, 14, 4], [20, 12, 4], [24, 11, 8], [32, 9, 4], [36, 12, 4], [40, 16, 6], [46, 14, 2], [48, 12, 4], [52, 14, 4], [56, 12, 8]] },
+        drums: { kick: 'x.......x.x.....', snare: '....X.......X...', hat: 'x.x.x.x.x.x.x.x.', taiko: 'x...............', tom: '..............xx' },
+        delay: 0.3
+    },
     // Chefe final — O Arquiteto: Ré menor, órgão, baixo distorcido
     final: {
         bpm: 160, root: 38, chords: [[0, 'm'], [-4, 'M'], [5, 'm'], [7, 'M']],

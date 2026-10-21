@@ -256,3 +256,17 @@ input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rg
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slidein { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes float { 50% { transform: translateY(-6px); } }
+
+/* vidas palestinas perdidas */
+.hud-lives-row { margin-top: 5px; font-size: 13px; color: #ff9a8a; display: flex; justify-content: space-between; }
+.hud-lives-row b { color: #ff5b4a; font-weight: normal; font-size: 16px; }
+.hud-lives-row.flash { animation: livesflash 0.7s; }
+@keyframes livesflash { 0%, 60% { background: rgba(255, 60, 40, 0.45); } 100% { background: transparent; } }
+.tally-row.danger b { color: #ff6a5a; }
+.report .kv.lives { margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255, 90, 74, 0.4); }
+.report .kv.lives b { color: #ff6a5a; font-size: 20px; }
+.lives-line { color: #ffb0a6; }
+.lives-line b { color: #ff6a5a; font-family: var(--title); font-weight: normal; letter-spacing: 1px; }
+#ranking-table td.lives { color: #ff9a8a; }
+.brief-text p.prologue:first-child { color: var(--gold); font-style: normal; letter-spacing: 1px; }
+#victory-text { background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--gold); padding: 18px 22px; max-height: 600px; }

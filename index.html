@@ -2,11 +2,12 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <!-- ?v=... nos arquivos abaixo força o navegador a baixar a versão nova (evita usar cópia antiga em cache) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Guerra nos Céus</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Staatliches&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=20261021c">
 </head>
 <body>
 <body>
@@ -23,6 +24,7 @@
                         <span id="hud-mult">x1.0</span>
                         <div class="combo-bar"><div id="hud-combo"></div></div>
                     </div>
+                    <div class="hud-lives-row" id="hud-lives-row" title="Cada inimigo que passa por você mata civis palestinos. Quanto menor, melhor.">VIDAS PERDIDAS <b id="hud-lives">0</b></div>
                 </div>
                 <div class="hud-block">
                     <div class="hud-stage" id="hud-stage">FASE 1</div>
@@ -172,7 +174,7 @@
             <div class="rank-mine" id="rank-mine"></div>
             <div id="ranking-table-container">
                 <table id="ranking-table">
-                    <thead><tr><th>#</th><th>Nome</th><th>Pontos</th><th>Alcance</th><th>Chefes</th><th>Tempo</th><th>Abates</th><th>Data</th></tr></thead>
+                    <thead><tr><th>#</th><th>Nome</th><th>Pontos</th><th>Alcance</th><th>Chefes</th><th>Abates</th><th>Vidas perdidas</th><th>Tempo</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -211,23 +213,24 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
-<script src="js/config.js"></script>
-<script src="js/utils.js"></script>
-<script src="js/assets.js"></script>
-<script src="js/audio.js"></script>
-<script src="js/music.js"></script>
-<script src="js/input.js"></script>
-<script src="js/fx.js"></script>
-<script src="js/projectiles.js"></script>
-<script src="js/aircraft.js"></script>
-<script src="js/player.js"></script>
-<script src="js/enemies.js"></script>
-<script src="js/bosses.js"></script>
-<script src="js/powerups.js"></script>
-<script src="js/stages.js"></script>
-<script src="js/hud.js"></script>
-<script src="js/ranking.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/game.js"></script>
+<script src="js/config.js?v=20261021c"></script>
+<script src="js/utils.js?v=20261021c"></script>
+<script src="js/assets.js?v=20261021c"></script>
+<script src="js/audio.js?v=20261021c"></script>
+<script src="js/music.js?v=20261021c"></script>
+<script src="js/input.js?v=20261021c"></script>
+<script src="js/fx.js?v=20261021c"></script>
+<script src="js/projectiles.js?v=20261021c"></script>
+<script src="js/aircraft.js?v=20261021c"></script>
+<script src="js/bossart.js?v=20261021c"></script>
+<script src="js/player.js?v=20261021c"></script>
+<script src="js/enemies.js?v=20261021c"></script>
+<script src="js/bosses.js?v=20261021c"></script>
+<script src="js/powerups.js?v=20261021c"></script>
+<script src="js/stages.js?v=20261021c"></script>
+<script src="js/hud.js?v=20261021c"></script>
+<script src="js/ranking.js?v=20261021c"></script>
+<script src="js/ui.js?v=20261021c"></script>
+<script src="js/game.js?v=20261021c"></script>
 </body>
 </html>

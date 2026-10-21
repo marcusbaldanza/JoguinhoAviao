@@ -4,7 +4,8 @@
    ===================================================================== */
 const PATTERN_DUR = {
     aimedFan: 3, sideTurrets: 3, ring: 3.2, spiral: 4, spiralDouble: 4.5, missiles: 2.6, minigun: 3, minigunDouble: 3.4,
-    rocketBarrage: 2.6, drones: 1.8, fanWide: 3.2, laserSweep: 3.6, laserTwin: 3.4, dashRun: 3.2, mines: 2.2, partsFire: 3.5
+    rocketBarrage: 2.6, drones: 1.8, fanWide: 3.2, laserSweep: 3.6, laserTwin: 3.4, dashRun: 3.2, mines: 2.2, partsFire: 3.5,
+    droneSwarm: 2.4, droneRing: 2.4, broadside: 3.2, flakBarrage: 2.6, mineCarpet: 2.6, carpetBomb: 3.4, cloak: 2.8, launchJets: 2.8
 };
 
 const PATTERNS = {
@@ -154,6 +155,82 @@ const PATTERNS = {
             enemyShoot(x, y, Math.PI / 2 + rand(-0.6, 0.6), 160, { kind: 'mine', color: FACTION_COLORS.boss2, r: 11, hp: 30, baseDmg: 12, dmg: 18, life: 8 });
         }
     },
+    // ---- padrões dos chefes novos ----
+    droneSwarm(b, p) { // nave-mãe solta drones pelas baias
+        if (p.every(b.rage ? 0.35 : 0.5) && G.enemies.filter((e) => e.type === 'dr').length < 14) {
+            const bays = [[-0.12, -0.07], [0.12, -0.07], [-0.12, 0.07], [0.12, 0.07]];
+            const [bx, by] = pick(bays), [x, y] = b.at(bx, by);
+            const d = spawnEnemy('dr', x, y, { veteran: false });
+            d.vx = rand(-160, 160); d.vy = rand(80, 160);
+            FX.muzzle(x, y, '#ff3b2f', 16);
+        }
+    },
+    droneRing(b, p) { // anel de tiros + drones nas pontas dos braços
+        PATTERNS.ring(b, p);
+        if (!p.done) {
+            p.done = true;
+            for (const [ox, oy] of [[-0.38, 0.38], [0.38, 0.38]]) { const [x, y] = b.at(ox, oy); const d = spawnEnemy('dr', x, y); d.vx = ox * 400; d.vy = 120; }
+        }
+    },
+    broadside(b, p) { // canhoneira: rajadas dos canhões laterais com antecipação
+        if (p.every(b.rate(0.12))) {
+            p.k = ((p.k || 0) + 1) % 3;
+            const [x, y] = b.at(-0.13, -0.12 + p.k * 0.11);
+            const pl = G.player, lead = 0.35;
+            const a = angleTo(x, y, pl.x + pl.vx * lead, pl.y + pl.vy * lead) + rand(-0.06, 0.06);
+            enemyShoot(x, y, a, 330 * b.spd(), { kind: 'needle', color: FACTION_COLORS.boss2, dmg: 10, r: 5 });
+            FX.muzzle(x, y, '#ffb020', 16); Sound.enemyShot();
+        }
+    },
+    flakBarrage(b, p) {
+        if (p.every(b.rate(0.45))) {
+            const [x, y] = b.at(rand(-0.3, 0.3), 0.2), pl = G.player;
+            const tx = pl.x + rand(-90, 90), ty = pl.y + rand(-120, 40);
+            const sp = 260 * b.spd();
+            enemyShoot(x, y, angleTo(x, y, tx, ty), sp, { kind: 'flak', fuse: Math.hypot(tx - x, ty - y) / (sp * G.mod.bulletSpeed), baseDmg: 12, dmg: 12, r: 6, color: FACTION_COLORS.boss2, frags: b.rage ? 10 : 8 });
+            Sound.explosion(0.25);
+        }
+    },
+    mineCarpet(b, p) { // fileira de minas magnéticas sobre o rio
+        if (p.every(1.1)) {
+            const n = b.rage ? 7 : 5;
+            for (let i = 0; i < n; i++) {
+                const x = W * (0.1 + 0.8 * (i / (n - 1))) + rand(-20, 20);
+                enemyShoot(b.x, b.y + b.h * 0.3, angleTo(b.x, b.y + b.h * 0.3, x, b.y + 260), 220, { kind: 'mine', color: FACTION_COLORS.boss2, r: 11, hp: 26, baseDmg: 12, dmg: 18, life: 8 });
+            }
+            Sound.missile();
+        }
+    },
+    carpetBomb(b, p) { // bombardeio em tapete: faixas de bombas pesadas caindo
+        b.override = true;
+        if (!p.dir) p.dir = b.x < W / 2 ? 1 : -1;
+        b.x += p.dir * 200 * p.dt;
+        if (b.x > W - b.w * 0.45 || b.x < b.w * 0.45) p.dir *= -1;
+        if (p.every(b.rate(0.16))) {
+            for (const ox of [-0.25, 0, 0.25]) {
+                const [x, y] = b.at(ox, 0.1);
+                enemyShoot(x, y, Math.PI / 2 + rand(-0.04, 0.04), 170 * b.spd(), { kind: 'accel', acc: 160, maxSpeed: 380, color: FACTION_COLORS.boss2, dmg: 14, r: 8 });
+            }
+        }
+    },
+    cloak(b, p) { // fica quase invisível e reaparece em outro lugar
+        if (!p.tx) { p.tx = rand(b.w * 0.5, W - b.w * 0.5); Sound.laserCharge(); }
+        b.cloaked = p.t < p.dur - 0.4;
+        b.override = true;
+        b.x = lerp(b.x, p.tx, Math.min(1, p.dt * 1.5));
+        if (p.t > 1.2 && p.every(b.rate(0.6))) { const [x, y] = b.at(0, 0.3); for (let i = -2; i <= 2; i++) enemyShoot(x, y, aimAngle(x, y, i * 0.15), 230, { color: FACTION_COLORS.boss, dmg: 11, r: 6 }); }
+    },
+    launchJets(b, p) { // porta-aviões: catapulta caças enquanto as baterias estiverem de pé
+        if (!b.armored) { PATTERNS.spiral(b, p); return; }
+        if (p.every(b.rage ? 0.7 : 1.0)) {
+            for (const ox of [-0.1, 0.12]) {
+                const [x, y] = b.at(ox, 0.4);
+                spawnEnemy('ap', x, y + 10);
+                FX.spawn({ type: 'smoke', x, y: y - 20, size: 10, size1: 30, life: 0.8, alpha: 0.4 });
+            }
+            Sound.missile();
+        }
+    },
     partsFire(b, p) {
         const alive = b.parts.filter((pt) => pt.alive);
         if (!alive.length) return PATTERNS.ring(b, p);
@@ -183,6 +260,9 @@ class Boss {
         this.queue = []; this.pattern = null; this.pauseT = 1.0;
         this.parts = (def.parts || []).map((pt) => ({ ...pt, maxHp: pt.hp * G.mod.hp, hp: pt.hp * G.mod.hp, alive: true, flash: 0, turret: Math.PI / 2 }));
         this.rotorA = 0;
+        this.rot = 0;
+        this.cloaked = false; this.cloakA = 1;
+        this.restY = def.sea ? 270 : 215;
         this.scale = 1;
         this.alt = def.alt;
     }
@@ -199,9 +279,11 @@ class Boss {
         this.hitFlash = Math.max(0, this.hitFlash - dt * 8);
         this.rotorA += dt * 30;
         for (const pt of this.parts) pt.flash = Math.max(0, pt.flash - dt * 8);
+        this.cloakA = lerp(this.cloakA, this.cloaked ? 0.12 : 1, Math.min(1, dt * 6));
+        if (this.def.sea && chance(0.8)) FX.spawn({ type: 'water', x: this.x + rand(-this.w * 0.35, this.w * 0.35), y: this.y + this.h * 0.45 + rand(-10, 10), vx: rand(-40, 40), vy: rand(0, 40), size: 4, size1: 16, life: 1.0, ground: true, drag: 1 });
         if (this.state === 'enter') {
-            this.y = lerp(this.y, 215, Math.min(1, dt * 1.1));
-            if (this.y > 205) { this.state = 'fight'; G.radio(this.def.pilot, this.def.intro); }
+            this.y = lerp(this.y, this.restY, Math.min(1, dt * 1.1));
+            if (this.y > this.restY - 10) { this.state = 'fight'; G.radio(this.def.pilot, this.def.intro); }
             this.ambientFx(dt);
             return;
         }
@@ -215,7 +297,7 @@ class Boss {
         }
 
         // padrão de ataque
-        this.hold = false; this.override = false; this.trackPlayer = 0;
+        this.hold = false; this.override = false; this.trackPlayer = 0; this.cloaked = false;
         if (this.pattern) {
             const p = this.pattern;
             p.t += dt; p.dt = dt;
@@ -233,10 +315,14 @@ class Boss {
             if (this.trackPlayer) tx = this.x + clamp(G.player.x - this.x, -1, 1) * this.trackPlayer * dt * 20;
             else if (m === 'sway' || m === 'dash') { tx = W / 2 + Math.sin(this.t * 0.45) * W * 0.27; ty = 215 + Math.sin(this.t * 0.9) * 22; }
             else if (m === 'strafe') { tx = clamp(G.player.x, 140, W - 140); ty = 225 + Math.sin(this.t * 1.3) * 30; }
+            else if (m === 'orbit') { tx = W / 2 + Math.cos(this.t * 0.6) * W * 0.27; ty = 240 + Math.sin(this.t * 0.6) * 95; }
+            else if (m === 'fixed') { tx = W / 2 + Math.sin(this.t * 0.25) * 40; ty = this.restY; }
             if (!this.hold) {
                 const sp = this.def.speed * (this.rage ? 1.3 : 1) * dt;
+                const ox = this.x;
                 this.x += clamp(tx - this.x, -sp, sp);
                 this.y += clamp(ty - this.y, -sp, sp);
+                if (m === 'orbit') this.rot = lerp(this.rot, clamp((this.x - ox) / Math.max(dt, 0.001) * 0.004, -0.5, 0.5), Math.min(1, dt * 3));
             }
         }
         this.x = clamp(this.x, this.w * 0.45, W - this.w * 0.45);
@@ -298,8 +384,8 @@ class Boss {
                     pt.alive = false;
                     FX.explode(x, y, 1.4);
                     G.addScore(250, x, y);
-                    G.banner('TORRE DESTRUÍDA', '#ffd36b', 1.0);
-                    if (!this.armored) G.radio('COMANDO', 'Núcleo exposto! Dano total!');
+                    G.banner(pt.rotor ? 'ROTOR DESTRUÍDO' : 'TORRE DESTRUÍDA', '#ffd36b', 1.0);
+                    if (!this.armored) G.radio('RADAR', 'Núcleo exposto! Dano total!');
                 }
                 return true;
             }
@@ -307,7 +393,7 @@ class Boss {
         // corpo: elipse aproximada
         const dx = (bx - this.x) / (this.w * 0.42), dy = (by - this.y) / (this.h * 0.4);
         if (dx * dx + dy * dy < 1) {
-            const real = dmg * (this.armored ? 0.35 : 1);
+            const real = dmg * (this.armored ? 0.35 : 1) * (this.cloaked ? 0.2 : 1);
             this.hp -= real;
             this.hitFlash = 0.7;
             if (chance(this.armored ? 0.7 : 0.35)) FX.impact(bx, by, this.armored ? '#9fd8ff' : '#ffe08a', this.armored ? 4 : 3);
@@ -352,7 +438,8 @@ class Boss {
 
     drawShadow(ctx) {
         if (this.state === 'dead') return;
-        drawSpriteShadow(ctx, this.spr, this.x, this.y, this.w * this.scale, this.h * this.scale, 0, this.alt);
+        if (this.cloakA < 0.5) return;
+        drawSpriteShadow(ctx, this.spr, this.x, this.y, this.w * this.scale, this.h * this.scale, this.rot, this.alt);
     }
 
     draw(ctx) {
@@ -363,12 +450,16 @@ class Boss {
         for (const [ex, ey] of this.def.engines) {
             const [x, y] = this.at(ex, ey);
             const s = 26 + 8 * Math.sin(this.t * 12 + ex * 10);
-            ctx.globalAlpha = 0.8;
-            ctx.drawImage(getGlow(this.rage ? '#ff5a3a' : '#5fc4ff'), x - s, y - s, s * 2, s * 2);
+            ctx.globalAlpha = 0.8; // os motores continuam visíveis mesmo camuflado (a dica do briefing)
+            ctx.drawImage(getGlow(this.def.sprite === 'boss_sombra' ? '#b48cff' : this.rage ? '#ff5a3a' : '#5fc4ff'), x - s, y - s, s * 2, s * 2);
         }
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = 'source-over';
-        drawSpriteFull(ctx, this.spr, this.x, this.y, this.w * this.scale, this.h * this.scale, 0, { burn: (1 - frac) * 0.95, flash: this.hitFlash * 0.6 });
+        drawSpriteFull(ctx, this.spr, this.x, this.y, this.w * this.scale, this.h * this.scale, this.rot, { burn: (1 - frac) * 0.95, flash: this.hitFlash * 0.6, alpha: this.cloakA });
+        if (this.cloakA < 0.9) { // tremulação da camuflagem
+            ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = (1 - this.cloakA) * 0.25 * (0.6 + 0.4 * Math.sin(this.t * 30));
+            ctx.drawImage(getGlow('#b48cff'), this.x - this.w * 0.5, this.y - this.h * 0.5, this.w, this.h); ctx.restore();
+        }
         if (this.def.rotor) {
             ctx.save();
             ctx.translate(this.x, this.y);
@@ -379,8 +470,23 @@ class Boss {
             for (let i = 0; i < 4; i++) { const a = this.rotorA + (i * TAU) / 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * R, Math.sin(a) * R); ctx.stroke(); }
             ctx.restore();
         }
+        // rotores duplos (Titã): discos grandes girando enquanto a peça existir
+        for (const pt of this.parts) if (pt.rotor && pt.alive) {
+            const [x, y] = this.at(pt.ox, pt.oy), R = this.w * 0.62;
+            ctx.save(); ctx.translate(x, y);
+            ctx.globalAlpha = 0.22; ctx.fillStyle = '#2a3026'; ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill();
+            ctx.globalAlpha = 0.3; ctx.strokeStyle = '#9aa38f'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.stroke();
+            ctx.globalAlpha = 0.7; ctx.strokeStyle = '#2b3027'; ctx.lineWidth = 9;
+            const a0 = this.rotorA * (pt.oy < 0 ? 1 : -1);
+            for (let i = 0; i < 3; i++) { const a = a0 + (i * TAU) / 3; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * R, Math.sin(a) * R); ctx.stroke(); }
+            if (pt.flash > 0) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = pt.flash; ctx.drawImage(getGlow('#ffffff'), -pt.r, -pt.r, pt.r * 2, pt.r * 2); }
+            ctx.restore();
+            ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - 22, y + pt.r + 6, 44, 5);
+            ctx.fillStyle = '#ffb020'; ctx.fillRect(x - 21, y + pt.r + 7, 42 * (pt.hp / pt.maxHp), 3);
+        }
         // torres
         for (const pt of this.parts) {
+            if (pt.rotor) { if (!pt.alive) { const [x, y] = this.at(pt.ox, pt.oy); ctx.fillStyle = 'rgba(15,10,8,0.85)'; ctx.beginPath(); ctx.arc(x, y, pt.r * 0.7, 0, TAU); ctx.fill(); } continue; }
             const [x, y] = this.at(pt.ox, pt.oy);
             ctx.save();
             ctx.translate(x, y);

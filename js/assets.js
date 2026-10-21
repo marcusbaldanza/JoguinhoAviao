@@ -23,7 +23,8 @@ const ASSET_LIST = {
     bg2: 'assets/opt/cenariojogo2.jpg',
     bg3: 'assets/opt/cenariojogo3.jpg',
     bg4: 'assets/opt/cenariojogo4.jpg',
-    bg5: 'assets/opt/cenariojogo5.jpg'
+    bg5: 'assets/opt/cenariojogo5.jpg',
+    bg6: 'assets/opt/cenariojogo6.jpg'
 };
 
 const IMG = {};   // imagens cruas
@@ -55,7 +56,8 @@ async function loadAssets(onProgress) {
     SPR.drone = buildSprite(TEX.drone);
     SPR.missileIcon = buildSprite(TEX.missileIcon);
     SPR.shieldIcon = buildSprite(TEX.shieldIcon);
-    buildHangar(); // 12 aeronaves do jogador
+    buildHangar(); // 20 aeronaves do jogador
+    buildBossArt(); // chefes novos
     // variantes tingidas (bombardeiro e chefes)
     getTinted('aviaoEUA', ENEMY_TYPES.bm.tint);
     for (const b of Object.values(BOSSES)) if (b.tint) getTinted(b.sprite, b.tint);

@@ -8,10 +8,15 @@ const WAVES = {
         const x0 = dir > 0 ? rand(60, 200) : rand(W - 200, W - 60);
         for (let i = 0; i < n; i++) d.later(i * 0.35, () => spawnEnemy('ap', clamp(x0 + dir * i * 90, 40, W - 40), -60));
     },
-    vForm(d) {
-        const cx = rand(180, W - 180), phase = rand(0, TAU), amp = rand(50, 110);
+    vForm(d) { // formação em V: desce reta e cada avião "quebra" para o seu lado
+        const cx = rand(180, W - 180), breakY = H * rand(0.28, 0.42);
         const ks = G.mod.density > 1.6 ? [0, -1, 1, -2, 2, -3, 3] : [0, -1, 1, -2, 2];
-        ks.forEach((k) => d.later(Math.abs(k) * 0.12, () => spawnEnemy('ip', cx + k * 62, -60 - Math.abs(k) * 50, { amp, freq: 1.8, phase })));
+        ks.forEach((k) => d.later(Math.abs(k) * 0.12, () => spawnEnemy('ip', cx + k * 62, -60 - Math.abs(k) * 50, { side: k === 0 ? (chance(0.5) ? -1 : 1) : Math.sign(k), breakY: breakY + Math.abs(k) * 30 })));
+    },
+    rearAttack(d) { // caças que surgem por trás e passam pelo jogador subindo
+        const n = 2 + Math.min(2, Math.floor(G.progress / 3));
+        for (let i = 0; i < n; i++) d.later(i * 0.4, () => spawnEnemy('ap', rand(80, W - 80), H + 60, { fromBelow: true }));
+        if (!d.rearWarned) { d.rearWarned = true; G.radio('RADAR', 'Contatos na sua cauda!'); }
     },
     swoop(d) {
         const side = chance(0.5) ? -1 : 1, n = Math.round(5 * Math.min(1.8, G.mod.density));
@@ -52,6 +57,7 @@ class StageDirector {
         this.escortBonusMax = 2000 + 1000 * index;
         this.escortBonus = this.escortBonusMax;
         this.kills = 0;
+        this.killSupply = 0;
         this.hitsTaken = 0;
         this.warnT = 0;
         this.spotSeeds = [0, 1, 2].map((i) => ({ ox: W * (0.2 + i * 0.3), ph: rand(0, TAU), s: rand(0.35, 0.55), s2: rand(0.25, 0.4) }));
@@ -91,12 +97,13 @@ class StageDirector {
                 this.waveT -= dt;
                 if (this.waveT <= 0 && airCount < Math.round(this.def.maxEnemies * G.mod.density)) {
                     WAVES[weightedPick(this.def.pool)](this);
+                    if (G.progress >= 3 && chance(0.1 + G.progress * 0.01)) this.later(rand(1, 2), () => WAVES.rearAttack(this));
                     // ondas simultâneas quando a pressão está alta
                     if (chance(clamp((G.mod.density - 1) * 0.45, 0, 0.75))) this.later(rand(0.6, 1.4), () => WAVES[weightedPick(this.def.pool)](this));
                     this.waveT = randRange(this.def.waveEvery) / Math.sqrt(G.mod.density);
                 }
                 this.updateGround(dt);
-                if (!this.midboss2Done && G.progress >= 2 && this.t >= this.def.duration * 0.8) {
+                if (!this.midboss2Done && G.progress >= 4 && this.t >= this.def.duration * 0.8) {
                     this.midboss2Done = true;
                     spawnEnemy('bm', W * 0.3, -120); spawnEnemy('bm', W * 0.7, -160);
                     G.banner('ESQUADRA DE BOMBARDEIROS', '#ff7a3a', 2, 'Dois alvos pesados');

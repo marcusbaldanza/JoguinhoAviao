@@ -29,14 +29,17 @@ class Enemy {
         this.spinRot = 0;
         this.rotorA = rand(0, TAU);
         this.isAir = def.kind !== 'ground';
+        // --- modelo de voo dos aviões: rumo (hd) + velocidade constante + taxa de curva limitada
+        this.hd = opts.hd ?? Math.PI / 2; this.spd = def.speed * rand(0.92, 1.08); this.turnRate = 0; this.bank = 0;
         if (def.ai === 'diver') {
-            const tx = clamp((G.player ? G.player.x : W / 2) + rand(-120, 120), 40, W - 40);
-            const a = angleTo(x, y, tx, H + 100);
-            this.vx = Math.cos(a) * def.speed; this.vy = Math.sin(a) * def.speed;
+            if (opts.fromBelow) this.hd = -Math.PI / 2;
+            else { const tx = clamp((G.player ? G.player.x : W / 2) + rand(-80, 80), 40, W - 40); this.hd = clamp(angleTo(x, y, tx, H * 0.7), Math.PI / 2 - 0.7, Math.PI / 2 + 0.7); }
+            this.breakSide = 0;
         }
-        if (def.ai === 'weaver') { this.baseX = x; this.amp = opts.amp ?? rand(60, 130); this.freq = opts.freq ?? rand(1.6, 2.4); this.phase = opts.phase ?? 0; }
+        if (def.ai === 'strafe') { this.side = opts.side ?? (x < W / 2 ? -1 : 1); this.breakY = opts.breakY ?? H * rand(0.3, 0.45); }
+        if (def.ai === 'bomber') { this.hd = Math.PI / 2 + (x < W / 2 ? 0.12 : -0.12) * rand(0.3, 1); this.spd = def.speed; }
+        this.vx = Math.cos(this.hd) * this.spd; this.vy = Math.sin(this.hd) * this.spd;
         if (def.ai === 'hover' || def.ai === 'ringer') { this.tx = opts.tx ?? clamp(x, 80, W - 80); this.ty = opts.ty ?? rand(120, 300); this.hold = rand(7, 10); }
-        if (def.ai === 'bomber') { this.ty = 190; this.hold = 20; this.baseX = x; }
         if (def.ai === 'boat') { this.vx = opts.dir ? opts.dir * def.speed : (x < W / 2 ? 1 : -1) * def.speed; }
     }
 
@@ -49,15 +52,22 @@ class Enemy {
         if (this.dying) return this.updateDying(dt);
         const def = this.def, p = G.player;
         switch (def.ai) {
-            case 'diver':
-                if (this.t < 1.0 && p) this.vx += clamp(p.x - this.x, -1, 1) * 80 * dt;
-                this.faceVelocity(dt);
+            case 'diver': { // mergulho de ataque em direção ao jogador e curva de saída (como um caça real)
+                let want = this.hd;
+                if (this.opts.fromBelow) { // ataque pela retaguarda: sobe passando pelo jogador
+                    want = p ? clamp(angleTo(this.x, this.y, p.x, -200), -Math.PI / 2 - 0.5, -Math.PI / 2 + 0.5) : -Math.PI / 2;
+                } else if (!this.breakSide) {
+                    if (p) want = clamp(angleTo(this.x, this.y, p.x, p.y + 80), Math.PI / 2 - 0.9, Math.PI / 2 + 0.9);
+                    if (p && (this.y > H * 0.52 || dist2(this.x, this.y, p.x, p.y) < 200 * 200)) this.breakSide = this.x < p.x ? -1 : 1;
+                } else want = Math.PI / 2 + this.breakSide * 1.05; // curva de escape para o lado
+                this.fly(dt, want, 1.7);
                 break;
-            case 'weaver':
-                this.vy = def.speed * 0.75;
-                { const nx = this.baseX + Math.sin(this.t * this.freq + this.phase) * this.amp; this.vx = (nx - this.x) / Math.max(dt, 0.001); }
-                this.faceVelocity(dt, 0.6);
+            }
+            case 'strafe': { // passagem em formação e "break" — cada avião abre para o seu lado
+                const want = this.y < this.breakY ? Math.PI / 2 : Math.PI / 2 + this.side * 0.95;
+                this.fly(dt, want, 1.3);
                 break;
+            }
             case 'swooper': {
                 const o = this.opts, dur = o.dur || 3.2;
                 const k = this.t / dur;
@@ -67,6 +77,7 @@ class Enemy {
                 const ny = u * u * o.p0[1] + 2 * u * k * o.p1[1] + k * k * o.p2[1];
                 this.vx = (nx - this.x) / Math.max(dt, 0.001); this.vy = (ny - this.y) / Math.max(dt, 0.001);
                 this.x = nx; this.y = ny;
+                { const nh = Math.atan2(this.vy, this.vx), tr = angleDiff(this.hd, nh) / Math.max(dt, 0.001); this.hd = nh; this.bank = lerp(this.bank, clamp(tr / 1.6, -1, 1), Math.min(1, dt * 6)); }
                 this.faceVelocity(dt, 1);
                 this.tryFire(dt);
                 return;
@@ -78,9 +89,10 @@ class Enemy {
                     this.y = lerp(this.y, this.ty, Math.min(1, dt * 1.4));
                     if (Math.abs(this.y - this.ty) < 6) this.state = 'hold';
                 } else if (this.state === 'hold') {
-                    this.hold -= dt;
+                    this.hold -= dt; // helicóptero: avança, recua e balança lateralmente
                     if (p) this.x += clamp(p.x - this.x, -1, 1) * (def.ai === 'hover' ? 45 : 20) * dt;
-                    this.y += Math.sin(this.t * 2) * 12 * dt;
+                    this.ty = 150 + (Math.sin(this.t * 0.55 + this.rotorA) + 1) * 110;
+                    this.y = lerp(this.y, this.ty, Math.min(1, dt * 0.6));
                     if (this.hold <= 0) this.state = 'exit';
                 } else {
                     this.vy = Math.min(this.vy + 220 * dt, 260);
@@ -101,14 +113,8 @@ class Enemy {
                 FX.addLight(this.x, this.y, 40, '#ff2a2a', Math.sin(this.t * 14) > 0 ? 0.9 : 0.2);
                 break;
             }
-            case 'bomber':
-                if (this.state === 'enter') { this.vy = (this.ty - this.y) * 0.8 + 10; if (this.y > this.ty - 5) this.state = 'hold'; }
-                else if (this.state === 'hold') {
-                    this.hold -= dt; this.vy = 0;
-                    this.vx = Math.cos(this.t * 0.6) * 60;
-                    if (this.hold <= 0) this.state = 'exit';
-                } else { this.vy = Math.max(-def.speed * 2, this.vy - 60 * dt); }
-                this.rot = this.vx * 0.0012;
+            case 'bomber': // passagem lenta e reta rumo à flotilha — se passar, causa muitas mortes
+                this.fly(dt, this.hd + (this.x < 120 ? 0.2 : this.x > W - 120 ? -0.2 : 0), 0.25);
                 for (const s of [-0.3, 0.3]) FX.addLight(this.x + s * this.w, this.y - this.h * 0.35, 70, '#5fb8ff', 0.5);
                 break;
             case 'ground':
@@ -128,10 +134,23 @@ class Enemy {
         if (this.y > -10) this.tryFire(dt);
         this.emitDamageFx();
         // saiu da tela
-        if (this.y > H + this.h || this.y < -this.h * 2 - 200 || this.x < -200 || this.x > W + 200) {
+        const out = this.y > H + this.h || this.x < -this.w || this.x > W + this.w || (this.y < -this.h * 2 && this.vy < 0) || this.y < -this.h * 2 - 260;
+        if (out && !(this.t < 1.5 && (this.x < -this.w || this.x > W + this.w))) { // drones de flanco nascem fora da tela
             this.dead = true;
-            if (this.isAir && this.y > H) G.onEnemyEscaped(this);
+            // "passou por você": saiu por baixo, ou pelas laterais já na metade de baixo, indo em direção à flotilha
+            if (this.isAir && this.vy > 0 && this.y > H * 0.55) G.onEnemyEscaped(this);
         }
+    }
+
+    /** voo com taxa de curva limitada e inclinação (bank) proporcional à curva */
+    fly(dt, want, maxTurn) {
+        const d = angleDiff(this.hd, want);
+        const tr = clamp(d * 3, -maxTurn, maxTurn);
+        this.turnRate = lerp(this.turnRate, tr, Math.min(1, dt * 5));
+        this.hd += this.turnRate * dt;
+        this.vx = Math.cos(this.hd) * this.spd; this.vy = Math.sin(this.hd) * this.spd;
+        this.rot = this.hd - Math.PI / 2;
+        this.bank = clamp(this.turnRate / maxTurn, -1, 1);
     }
 
     faceVelocity(dt, k = 1) {
@@ -272,7 +291,7 @@ class Enemy {
 
     drawShadow(ctx) {
         if (!this.isAir) return;
-        drawSpriteShadow(ctx, this.spr, this.x, this.y, this.w * this.scale, this.h * this.scale, this.rot + this.spinRot, this.alt);
+        drawSpriteShadow(ctx, this.spr, this.x, this.y, this.w * this.scale, this.h * this.scale, this.rot + this.spinRot, this.alt, this.def.kind === 'plane' && !this.dying ? 1 - Math.abs(this.bank) * 0.32 : 1);
     }
 
     draw(ctx) {
@@ -292,7 +311,8 @@ class Enemy {
             ctx.drawImage(getGlow('#ff2a2a'), this.x - R, this.y - R, R * 2, R * 2);
             ctx.restore();
         }
-        drawSpriteFull(ctx, this.spr, this.x, this.y, this.w * this.scale, this.h * this.scale, this.rot + this.spinRot, { burn, flash: this.hitFlash });
+        const sx = def.kind === 'plane' && !this.dying ? 1 - Math.abs(this.bank) * 0.32 : 1; // inclinação nas curvas
+        drawSpriteFull(ctx, this.spr, this.x, this.y, this.w * this.scale, this.h * this.scale, this.rot + this.spinRot, { burn, flash: this.hitFlash, sx });
         if (this.veteran && !this.dying) { // insígnia de veterano
             ctx.fillStyle = '#ffcc00';
             for (let i = 0; i < 2; i++) { const yy = this.y - this.h * 0.55 - 14 - i * 5; ctx.beginPath(); ctx.moveTo(this.x - 7, yy); ctx.lineTo(this.x, yy + 4); ctx.lineTo(this.x + 7, yy); ctx.lineTo(this.x + 7, yy + 2.5); ctx.lineTo(this.x, yy + 6.5); ctx.lineTo(this.x - 7, yy + 2.5); ctx.fill(); }

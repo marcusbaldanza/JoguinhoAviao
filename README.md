@@ -13,12 +13,13 @@ js/config.js        TODOS os números de balanceamento, fases, história, chefes
 js/utils.js         matemática e helpers
 js/assets.js        carregamento + texturas geradas (sombras, queimaduras, nuvens, crateras, drones, SAM, lanchas)
 js/audio.js         efeitos sonoros procedurais (Web Audio, sem arquivos)
-js/music.js         trilha de cada fase (versões calma / fase / remix de chefe) + tema do chefe final
+js/music.js         10 trilhas (uma por fase) com versões calma / fase / remix de chefe + tema do chefe final
 js/input.js         teclado, controle (gamepad) e toque
 js/fx.js            partículas, explosões em camadas, iluminação dinâmica, clima, tremor de câmera
 js/projectiles.js   traçantes, mísseis, foguetes, flak, minas, lasers
-js/aircraft.js      HANGAR: 12 aeronaves brasileiras desenhadas por código (1 por nível de canhão)
-js/player.js        jogador, evolução por XP (canhão 12, motor 8, mísseis 6) e desenho de sprite
+js/aircraft.js      HANGAR: 20 aeronaves brasileiras desenhadas por código (1 por nível de canhão)
+js/bossart.js       arte dos 5 chefes novos (nave-mãe, canhoneira, helicóptero de carga, bombardeiro furtivo, porta-aviões)
+js/player.js        jogador, evolução por XP (canhão 20, motor 12, mísseis 10) e desenho de sprite
 js/enemies.js       inimigos e suas IAs
 js/bosses.js        chefes, padrões de ataque, partes destrutíveis
 js/powerups.js      power-ups com sorteio adaptativo
@@ -29,9 +30,17 @@ js/game.js          estado, laço principal, colisões e renderização em camad
 assets/opt/         imagens otimizadas (~2 MB no total, antes ~26 MB)
 ```
 
+## Campanha
+
+10 fases com cenas entre elas. Recruta e Veterano terminam na fase 10 e registram no ranking. No **Ás**, depois da fase 10 abre o modo infinito: cada ciclo multiplica a dificuldade de forma exponencial.
+
+Cada inimigo que passa por você conta **vidas palestinas perdidas** (valor base por tipo × número da fase; veteranos contam em dobro). O total aparece no HUD, no fim de cada fase, no relatório final e no ranking — quanto menor, melhor.
+
 ## Dificuldade
 
-O jogo escala por "progressão global" (fase + 5 × ciclo): vida, dano, cadência, velocidade dos tiros e volume de inimigos crescem a cada fase e de forma composta a cada ciclo. Há também uma **pressão adaptativa**: quanto mais evoluído o avião, mais inimigos aparecem e mais resistentes eles ficam. Tudo em `SCALING` dentro de `js/config.js`.
+O jogo escala por "progressão global" (fase + 10 × ciclo): vida, dano, cadência, velocidade dos tiros e volume de inimigos crescem a cada fase e de forma composta a cada ciclo. Há também uma **pressão adaptativa**: quanto mais evoluído o avião, mais inimigos aparecem e mais resistentes eles ficam. Tudo em `SCALING` dentro de `js/config.js`.
+
+Power-ups e peças chegam por tempo (não por quantidade de abates), então a quantidade por fase é parecida da fase 1 à 10 — ajuste em `DIFFICULTY.supply`, `SUPPLY`, `GEAR_RATE` e `HEAL`.
 
 ## Para ajustar o jogo
 

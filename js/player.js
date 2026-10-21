@@ -74,7 +74,7 @@ class Player {
         this.t = 0;
     }
 
-    get model() { return AIRCRAFT_MODELS[Math.min(this.cannon, 12) - 1]; }
+    get model() { return AIRCRAFT_MODELS[Math.min(this.cannon, AIRCRAFT_MODELS.length) - 1]; }
     get spr() { return SPR[this.model.sprite]; }
     get w() { return this.model.w; }
     get h() { const s = this.spr; return s ? this.w * (s.h / s.w) : this.w; }
@@ -199,7 +199,7 @@ class Player {
     }
 
     cannonStats() {
-        const lvl = CANNON_LEVELS[Math.min(this.cannon, 12)];
+        const lvl = CANNON_LEVELS[Math.min(this.cannon, CANNON_LEVELS.length - 1)];
         const fury = this.furyT > 0;
         return { rate: lvl.rate * (fury ? 1.6 : 1), dmg: lvl.dmg * this.dmgMult * (fury ? 1.25 : 1), guns: lvl.guns, w: lvl.w + (fury ? 1 : 0), pierce: lvl.pierce || 0 };
     }
@@ -207,7 +207,7 @@ class Player {
     fireCannon() {
         const st = this.cannonStats();
         const fury = this.furyT > 0;
-        const color = fury ? FACTION_COLORS.fury : this.cannon >= 9 ? FACTION_COLORS.player2 : FACTION_COLORS.player;
+        const color = fury ? FACTION_COLORS.fury : this.cannon >= 15 ? FACTION_COLORS.player3 : this.cannon >= 9 ? FACTION_COLORS.player2 : FACTION_COLORS.player;
         const focusK = this.focus ? 0.25 : 1;
         for (const [ox, deg] of st.guns) {
             const a = -Math.PI / 2 + deg * DEG * focusK;
@@ -250,6 +250,7 @@ class Player {
     hurt(dmg, hx, hy) {
         if (this.invulnerable) return false;
         dmg *= G.mod.dmgTaken;
+        if (this.shield <= 0) G.recentDmg = (G.recentDmg || 0) + dmg;
         if (this.shield > 0) {
             this.shield -= dmg;
             this.shieldHit = 1;
@@ -312,7 +313,8 @@ class Player {
     drawEngines(ctx, w, h, sx) {
         const m = this.model, e = this.eng;
         const fury = this.furyT > 0;
-        const col = fury ? '#ff8c2a' : e.flame;
+        const tri = ['#22c35e', '#f6d21e', '#4f7fe4'];
+        const col = fury ? '#ff8c2a' : e.tricolor ? tri[Math.floor(this.t * 5) % 3] : e.flame;
         const boost = (this.vy < -50 ? 1.35 : this.vy > 50 ? 0.65 : 1) * e.len;
         // propulsores laterais
         if (e.boosters) {
